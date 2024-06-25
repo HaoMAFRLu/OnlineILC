@@ -6,6 +6,8 @@ import matlab.engine
 from dataclasses import dataclass
 from pathlib import Path
 
+import mytypes
+
 class Beam:
     """The beam simulation, implemented in simulink
     
@@ -14,7 +16,10 @@ class Beam:
     model_name: the name of the model
     SIM_PARAMS: simulation paramteres
         |--StopTime: the simulation time, in second
-        |--ModelOutput: the output variable name
+        |--StartTime: the start time of the simulation, in second
+        |--AbsTol: the tolerance of the simulation
+        |--Solver: the solver of the simulation
+        |--SimulationMode: the mode of the simulation
     """
     def __init__(self, model_name: str, SIM_PARAMS: dataclass) -> None:
         self.model_name = model_name
@@ -83,17 +88,29 @@ class Beam:
         #     print("Error during simulation:", e)
         #     raise
 
-    def get_output(self):
-        """Get the output of the simulation
+    def _get_output(self, obj: matlab.object, name: str):
+        """Read data from the matlab object
         """
-        y = self.ENGINE.get(self.simout, 'y')
-        data = self.matlab_2_nparray(self.ENGINE.get(y, 'Data'))
+        return self.ENGINE.get(obj, name)
 
-        theta = self.ENGINE.get(self.simout, 'theta')
-        data = self.matlab_2_nparray(self.ENGINE.get(theta['signal1'], 'Data')
-                                     )
-        print('here')
-        return data
+    def get_output(self) -> tuple:
+        """Get the output of the simulation
+
+        returns:
+        --------
+        y: the displacement of the tip in the y-direction
+        theta: the relative anlges in each joint
+        """
+        _y = self._get_output(self.simout, 'y')
+        y = self.matlab_2_nparray(self._get_output(_y, 'Data'))
+
+        _theta = self._get_output(self.simout, 'theta')
+        l = len(_theta)
+        theta = [None] * l
+        for i in range(l):
+            name = 'signal' + str(i+1)
+            theta[i] = self.matlab_2_nparray(self._get_output(_theta[name], 'Data'))
+        return y, theta
     
     @staticmethod
     def nparray_2_matlab(value: np.ndarray) -> matlab.double:
@@ -113,3 +130,4 @@ class Beam:
         if isinstance(value, np.ndarray):
             value = self.nparray_2_matlab(value)
         self.ENGINE.workspace[name] = value
+
