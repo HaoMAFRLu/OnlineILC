@@ -11,4 +11,3 @@ class Beam_SIM_PARAMS:
     AbsTol: str
     Solver: str
     SimulationMode: str
-    
