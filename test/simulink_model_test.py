@@ -14,7 +14,6 @@ def get_random_input(T: int, dt: float,
     u_in = np.stack((t, u), axis=1)
     return u_in
 
-
 def run_simulink_model():
     SIM_PARAMS = Beam_SIM_PARAMS(
         StopTime='1',
@@ -31,8 +30,6 @@ def run_simulink_model():
     beam.set_input('u_in', u_in)
     beam.run_sim()
     simOut = beam.get_output()
-    print('here')
-
 
 if __name__ == "__main__":
     run_simulink_model()

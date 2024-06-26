@@ -1,6 +1,9 @@
 # Ignore the virtual environment directory
 myenv/
 
+# Ignore the ILC training data
+data/ilc/
+
 # Ignore Python cache files
 __pycache__/
 *.py[cod]
