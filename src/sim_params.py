@@ -11,3 +11,9 @@ class Beam_SIM_PARAMS:
     AbsTol: str
     Solver: str
     SimulationMode: str
+
+@dataclass
+class PRETRAIN_PARAMS:
+    """The hyperparameters for pretraining
+    """
+    pass

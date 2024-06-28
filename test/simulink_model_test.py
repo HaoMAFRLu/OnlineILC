@@ -6,6 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 's
 from sim_params import Beam_SIM_PARAMS
 from environmnet import Beam
 
+
 def get_random_input(T: int, dt: float, 
                      mean: float=0.0, std: float=1.0):
     l = int(T/dt)
