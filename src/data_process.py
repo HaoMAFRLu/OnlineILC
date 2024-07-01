@@ -8,6 +8,7 @@ import pickle
 import torch
 import math
 import random
+from dataclasses import dataclass
 
 from mytypes import *
 
@@ -20,10 +21,12 @@ class DataSeq():
     height: height dimension
     width: width dimension
     """
-    def __init__(self, channel: int, height: int, width: int) -> None:
-        self.channel = channel
-        self.height = height
-        self.width = width
+    def __init__(self, PARAMS: dataclass) -> None:
+        self.k = PARAMS['k']
+        self.batch_size = PARAMS['batch_size']
+        self.channel = PARAMS['channel']
+        self.height = PARAMS['height']
+        self.width = PARAMS['width']
 
     def import_data(self, inputs: List[Array], outputs: List[Array]) -> None:
         """Import the raw data, always the first step
@@ -129,10 +132,19 @@ class DataSeq():
 class DataProcess():
     """Prepare the inputs and outputs (labels) for the neural network
     """
-    def __init__(self) -> None:
+    def __init__(self, PARAMS: dataclass) -> None:
         self.current_dir = os.path.dirname(os.path.abspath(__file__))
         self.parent_dir = os.path.abspath(os.path.join(self.current_dir, os.pardir))
         self.path_data = os.path.join(self.parent_dir, 'data', 'pretraining')
+        self.reset_class(PARAMS)
+
+    def reset_class(self, PARAMS: dataclass):
+        """Reset the class
+        """
+        if PARAMS['mode'] is 'seq2seq':
+            _data_process = DataSeq(PARAMS)
+        else:
+            pass
 
     def _load_keys(self) -> list:
         """Return the list of key words
@@ -150,8 +162,8 @@ class DataProcess():
             data = pickle.load(file)
         return data
     
-    def read_raw_data(self, name_input: str, 
-                      name_output: str) -> Tuple[List[Array], List[Array]]:
+    def read_raw_data(self, input_name: str, 
+                      output_name: str) -> Tuple[List[Array], List[Array]]:
         """Read the raw data from the file
 
         parameters:
@@ -166,15 +178,9 @@ class DataProcess():
         """
         keys = self._load_keys()
         data = self._load_data()
-        raw_inputs = data[keys.index(name_input)]
-        raw_outputs = data[keys.index(name_output)]
+        raw_inputs = data[keys.index(input_name)]
+        raw_outputs = data[keys.index(output_name)]
         return raw_inputs, raw_outputs
-
-    def get_offline_training_data(self, **kwargs):
-        """Get the training inputs and outputs for the offline training
-        """
-        self.batch_size = kwargs['batch_size']
-        (raw_inputs, raw_outputs) = self.read_raw_data(kwargs['input'], kwargs['output'])
         
 
     def get_data(self, mode: str, **kwargs):
@@ -185,7 +191,8 @@ class DataProcess():
         mode: offline training or online training 
         """
         if mode is 'offline':
-            return self.get_offline_training_data(**kwargs)
+            raw_inputs, raw_outputs = self.read_raw_data(kwargs['input_name'], kwargs['output_name'])
+
         elif mode is 'online':
             return self.get_online_training_data(**kwargs)
 
