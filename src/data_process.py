@@ -22,6 +22,8 @@ class DataSeq():
     width: width dimension
     """
     def __init__(self, PARAMS: dataclass) -> None:
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
         self.k = PARAMS['k']
         self.batch_size = PARAMS['batch_size']
         self.channel = PARAMS['channel']
@@ -31,7 +33,7 @@ class DataSeq():
     def import_data(self, inputs: List[Array], outputs: List[Array]) -> None:
         """Import the raw data, always the first step
         """
-        self.inputs = inputs,
+        self.inputs = inputs
         self.outputs = outputs
         self.num_data = len(self.inputs)
 
@@ -41,8 +43,12 @@ class DataSeq():
         parameters:
         -----------
         data: the list of array
+
+        returns:
+        -------
+        tensor_list: a list of tensors, which are in the shape of 1 x channel x height x width
         """
-        tensor_list = [torch.tensor(arr, device=self.device) for arr in data]
+        tensor_list = [torch.tensor(arr, device=self.device).view(1, self.channel, self.height, self.width) for arr in data]
         return tensor_list
 
     @staticmethod
@@ -83,6 +89,15 @@ class DataSeq():
         k: the proportion of data used for training
         batch_size: the batch size
         num_data: the total number of data
+
+        returns:
+        --------
+        num_train: the number of data used for training
+        num_eval: the number of data used for evaluation
+        all_idx: the indcies of all data points
+        train_idx: the indices of data points used for training
+        eval_idx: the indices of data points used for evaluation
+        batch_idx: the indices of data in each mini batch
         """
         num_train = math.floor(num_data*k)
         all_idx = list(range(num_data))
@@ -105,7 +120,7 @@ class DataSeq():
     def split_data(self, data: List[torch.tensor], idx: list):
         """
         """
-        return torch.cat([data[i].flatten().unsqueeze(0) for i in idx], dim=0)
+        return torch.cat([data[i] for i in idx], dim=0)
 
     def _split_data(self, data: List[torch.tensor], batch_idx: list, eval_idx: list):
         """
@@ -122,27 +137,44 @@ class DataSeq():
     
     def generate_data(self):
         """Generate the data for training
+
+        parameters:
+        -----------
+        total_inputs_tensor: the list of all training data
+        total_outputs_tensor: the list of all labels
+        SPLIT_IDX: the structrue data containing the indices used
+                   for separating training data and evaluation data
         """
         total_inputs_tensor = self.get_tensor_data(self.inputs)
         total_outputs_tensor = self.get_tensor_data(self.outputs)
         SPLIT_IDX = self.generate_split_idx(self.k, self.batch_size, self.num_data)
         inputs_train, inputs_eval = self._split_data(total_inputs_tensor, SPLIT_IDX['batch_idx'], SPLIT_IDX['eval_idx'])
         outputs_train, outputs_eval = self._split_data(total_outputs_tensor, SPLIT_IDX['batch_idx'], SPLIT_IDX['eval_idx'])
+        data = {
+            'inputs_train': inputs_train,
+            'outputs_train': outputs_train,
+            'inputs_eval': inputs_eval,
+            'outputs_eval': outputs_eval
+        }
+        return data
 
 class DataProcess():
     """Prepare the inputs and outputs (labels) for the neural network
     """
-    def __init__(self, PARAMS: dataclass) -> None:
+    def __init__(self, **PARAMS: dict) -> None:
         self.current_dir = os.path.dirname(os.path.abspath(__file__))
         self.parent_dir = os.path.abspath(os.path.join(self.current_dir, os.pardir))
         self.path_data = os.path.join(self.parent_dir, 'data', 'pretraining')
-        self.reset_class(PARAMS)
+        self.initialization(PARAMS)
 
-    def reset_class(self, PARAMS: dataclass):
+    def initialization(self, PARAMS: dict):
         """Reset the class
         """
+        self.input_name = PARAMS['input_name']
+        self.output_name = PARAMS['output_name']
+
         if PARAMS['mode'] is 'seq2seq':
-            _data_process = DataSeq(PARAMS)
+            self._DATA_PROCESS = DataSeq(PARAMS)
         else:
             pass
 
@@ -188,13 +220,15 @@ class DataProcess():
         
         parameters:
         ----------- 
-        mode: offline training or online training 
+        mode: get offline training data or online training data 
         """
         if mode is 'offline':
-            raw_inputs, raw_outputs = self.read_raw_data(kwargs['input_name'], kwargs['output_name'])
-
+            raw_inputs, raw_outputs = self.read_raw_data(self.input_name, self.output_name)
+            self._DATA_PROCESS.import_data(raw_inputs, raw_outputs)
+            return self._DATA_PROCESS.generate_data()
+        
         elif mode is 'online':
-            return self.get_online_training_data(**kwargs)
+            pass
 
 
 
