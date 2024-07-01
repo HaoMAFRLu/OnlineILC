@@ -13,8 +13,9 @@ class Beam_SIM_PARAMS:
     SimulationMode: str
 
 @dataclass
-class PRETRAIN_PARAMS:
-    """The hyperparameters for pretraining
+class OFFLINE_DATA_PARAMS:
+    """The hyperparameters for genearating 
+    offline training data
     """
     mode: str
     k: float
@@ -24,3 +25,18 @@ class PRETRAIN_PARAMS:
     channel: int
     height: int
     width: int
+
+@dataclass
+class NN_PARAMS:
+    """The hyperparameters for neural networks
+    """
+    is_initialization: bool
+    loss_function: str
+    learning_rate: float
+    weight_decay: float
+    channel: int
+    height: int
+    width: int
+    filter_size: int
+    output_dim: int
+

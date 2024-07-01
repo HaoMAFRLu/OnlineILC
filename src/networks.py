@@ -3,7 +3,6 @@
 import torch.nn.functional as F
 import torch.nn.init as init
 import torch.nn
-from dataclasses import dataclass
 from network.CNN import CNN_SEQ
 
 class CNN_SEQUENCE():
@@ -17,12 +16,12 @@ class CNN_SEQUENCE():
         |-- weight_decay: weight decay of the optimizer
         |-- 
     """
-    def __init__(self, NN_PARAMS: dataclass) -> None:
-        self.NN_PARAMS = NN_PARAMS
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    def __init__(self, device: str, PARAMS: dict) -> None:
+        self.device = device
+        self.PARAMS = PARAMS
         self.build_network()
-        if self.NN_PARAMS['is_initialization'] is True:
-            self.initialize_weight(self.nn)
+        if self.PARAMS['is_initialization'] is True:
+            self.initialize_weight(self.NN)
     
     @staticmethod
     def initialize_weight(nn: torch.nn, sparsity: float=0.90, std: float=0.1) -> None:
@@ -54,21 +53,25 @@ class CNN_SEQUENCE():
             return torch.nn.MSELoss(reduction='mean')
 
     @staticmethod
-    def _get_optimizer(nn: torch.nn, lr: float, wd: float) -> torch.nn.functional:
+    def _get_optimizer(NN: torch.nn, lr: float, wd: float) -> torch.nn.functional:
         """Return the optimizer of the neural network
         """
-        return torch.optim.Adam(nn.parameters(),lr=lr,weight_decay=wd)
+        return torch.optim.Adam(NN.parameters(),lr=lr,weight_decay=wd)
 
     @staticmethod
-    def _get_model() -> torch.nn:
+    def _get_model(PARAMS) -> torch.nn:
         """Create the neural network
         """
-        return CNN_SEQ()
+        return CNN_SEQ(in_channel=PARAMS['channel'],
+                       height=PARAMS['height'],
+                       width=PARAMS['width'],
+                       filter_size=PARAMS['filter_size'],
+                       output_dim=PARAMS['output_dim'])
 
     def build_network(self) -> None:
-        self.nn = self._get_model()
-        self.nn.to(self.device)
-        self.loss_function = self._get_loss_function(self.NN_PARAMS['loss_function'])
+        self.NN = self._get_model(PARAMS=self.PARAMS)
+        self.NN.to(self.device)
+        self.loss_function = self._get_loss_function(self.PARAMS['loss_function'])
         self.loss_function.to(self.device)
-        self.optimizer = self._get_optimizer(self.nn, self.NN_PARAMS['learning_rate'], self.NN_PARAMS['weight_decay'])
+        self.optimizer = self._get_optimizer(self.NN, self.PARAMS['learning_rate'], self.PARAMS['weight_decay'])
         

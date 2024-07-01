@@ -21,7 +21,7 @@ class DataSeq():
     height: height dimension
     width: width dimension
     """
-    def __init__(self, PARAMS: dataclass) -> None:
+    def __init__(self, PARAMS: dict) -> None:
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         self.k = PARAMS['k']
