@@ -16,4 +16,11 @@ class Beam_SIM_PARAMS:
 class PRETRAIN_PARAMS:
     """The hyperparameters for pretraining
     """
-    pass
+    mode: str
+    k: float
+    batch_size: int
+    input_name: str
+    output_name: str
+    channel: int
+    height: int
+    width: int

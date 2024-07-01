@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
-from sim_params import Beam_SIM_PARAMS
+from params import Beam_SIM_PARAMS
 from environmnet import Beam
 
 
