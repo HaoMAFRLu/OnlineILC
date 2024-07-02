@@ -4,6 +4,8 @@ import numpy as np
 import torch.nn.functional as F
 from networks import CNN_SEQUENCE
 import torch
+import random
+from typing import Tuple, List
 
 class PreTrain():
     """
@@ -12,19 +14,125 @@ class PreTrain():
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.PARAMS = PARAMS
         if mode is 'seq2seq':
-            self.__class__ = type('DynamicClass', (CNN_SEQUENCE,), {})
+            self.__class__ = type('DynamicClass', (CNN_SEQUENCE, PreTrain), {})
         else:
             pass
-
-        super().__init__()
-        self.build_network(self.device, self.PARAMS)
+        super(self.__class__, self).__init__(self.device, PARAMS)
+        
+        self.build_network()
         if self.PARAMS['is_initialization'] is True:
             self.initialize_weight(self.NN)
     
     def import_data(self, data: dict) -> None:
-        """Get the data for pretraining
-        """
+        """Read the data for pretraining
 
-    def train(self, nn, optimizer, loss_function, inputs, outputs):
+        parameters:
+        -----------
+        inputs_train: input data for training
+        inputs_eval: input data for evaluation
+        outputs_train: output data for training
+        outputs_eval: output data for evaluation 
+        """
+        self.inputs_train = data['inputs_train']
+        self.inputs_eval = data['inputs_eval']
+        self.outputs_train = data['outputs_train']
+        self.outputs_eval = data['outputs_eval']
+
+    @staticmethod
+    def get_idx(num: int) -> list:
+        """Get the index
+        """
+        return list(range(num))
+    
+    @staticmethod
+    def get_shuffle_idx(idx: list) -> list:
+        """Get the shuffle idx
+        """
+        return random.shuffle(idx)
+
+    def _train(self, NN: torch.nn, 
+               optimizer: torch.optim, 
+               loss_function: torch.nn.modules.loss, 
+               inputs: List[torch.tensor], 
+               outputs: List[torch.tensor]) -> Tuple[float, float]:
         """Train the neural network
         """
+        total_loss = 0.0
+        NN.train()
+        idx = self.get_idx(len(inputs))
+        self.get_shuffle_idx(idx)
+        
+        for i in idx:
+            data = inputs[i]
+            label = outputs[i]
+            output = NN(data.float())
+            l = output.squeeze().shape[0]
+            loss = loss_function(output.squeeze(), label.view(l, -1).float())
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+        
+        avg_loss = total_loss/len(idx)
+        return avg_loss
+
+
+    def _eval(self, NN: torch.nn, 
+              loss_function: torch.nn.modules.loss,
+              inputs: List[torch.tensor], 
+              outputs: List[torch.tensor]) -> Tuple[float, float]:
+        """Evaluate the neural network
+        """
+        total_loss = 0.0 # loss summed over epoch and averaged
+        idx = self.get_idx(len(inputs))
+        NN.eval()
+
+        for i in idx:
+            data = inputs[i]
+            label = outputs[i]
+            output = NN(data.float())
+            l = output.squeeze().shape[0]
+            loss = loss_function(output.squeeze(), label.view(l, -1).float())
+            total_loss += loss.item()
+
+        avg_loss = total_loss/len(idx)
+        return avg_loss
+    
+    def learn(self, num_epochs: int=100) -> None:
+        """Call the training process
+        """
+        for i in range(num_epochs):
+            train_loss = self._train(self.NN,
+                                     self.optimizer,
+                                     self.loss_function,
+                                     self.inputs_train, 
+                                     self.outputs_train)
+            
+            eval_loss = self._eval(self.NN, 
+                                   self.loss_function,
+                                   self.inputs_eval, 
+                                   self.outputs_eval)
+
+            if i == 0:
+                loss_train_ini = train_loss
+                loss_eval_ini = eval_loss
+            
+            ptrain = train_loss/loss_train_ini * 100
+            peval = eval_loss/loss_eval_ini * 100
+            print ('[Epoch {}/{}] TRAIN/VALID loss: {:.6}/{:.6f}||{:.6}%/{:.6f}% '.format(i+1, num_epochs, train_loss, eval_loss, ptrain, peval))
+    
+    def visualize_result(self, NN: torch.nn,
+                         inputs: List[torch.tensor],
+                         outputs: List[torch.tensor],
+                         is_save: bool) -> None:
+        """Visualize the comparison between the ouputs of 
+        the neural network and the labels
+
+        parameters:
+        -----------
+        NN: the neural network
+        inputs: the input data
+        outputs: the output label
+        is_save: if save the plots
+        """
+        

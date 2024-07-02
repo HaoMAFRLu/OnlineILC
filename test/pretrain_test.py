@@ -38,7 +38,7 @@ def test():
     
     PRE_TRAIN = PreTrain(mode='seq2seq', **asdict(PARAMS))
     PRE_TRAIN.import_data(data)
-    PRE_TRAIN.train()
+    PRE_TRAIN.learn()
 
 if __name__ == "__main__":
     test()

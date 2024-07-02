@@ -14,7 +14,7 @@ class CNN_SEQ(nn.Module):
                                              out_channels=4*in_channel,
                                              kernel_size=(filter_size, 1),
                                              stride=(1, 1),
-                                             padding=(padding1, padding2),
+                                             padding=(padding1, 0),
                                              bias=True),
                                     nn.ReLU()
                                   )

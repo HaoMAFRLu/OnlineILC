@@ -19,9 +19,6 @@ class CNN_SEQUENCE():
     def __init__(self, device: str, PARAMS: dict) -> None:
         self.device = device
         self.PARAMS = PARAMS
-        self.build_network()
-        if self.PARAMS['is_initialization'] is True:
-            self.initialize_weight(self.NN)
     
     @staticmethod
     def initialize_weight(nn: torch.nn, sparsity: float=0.90, std: float=0.1) -> None:
@@ -67,6 +64,20 @@ class CNN_SEQUENCE():
                        width=PARAMS['width'],
                        filter_size=PARAMS['filter_size'],
                        output_dim=PARAMS['output_dim'])
+
+    @staticmethod
+    def count_parameters(model: torch.nn) -> int:
+        """Count the parameters in a neural network
+        """
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+    @staticmethod
+    def print_parameter_details(model: torch.nn) -> None:
+        """Print the information of the neural network
+        """
+        for name, param in model.named_parameters():
+            if param.requires_grad:
+                print(f"Parameter: {name}, Size: {param.size()}, Number of parameters: {param.numel()}")
 
     def build_network(self) -> None:
         self.NN = self._get_model(PARAMS=self.PARAMS)
