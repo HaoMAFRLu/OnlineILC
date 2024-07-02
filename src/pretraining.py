@@ -6,6 +6,12 @@ from networks import CNN_SEQUENCE
 import torch
 import random
 from typing import Tuple, List
+import matplotlib.pyplot as plt
+
+
+
+import utils as fcs
+from mytypes import Array, Array2D
 
 class PreTrain():
     """
@@ -120,7 +126,35 @@ class PreTrain():
             ptrain = train_loss/loss_train_ini * 100
             peval = eval_loss/loss_eval_ini * 100
             print ('[Epoch {}/{}] TRAIN/VALID loss: {:.6}/{:.6f}||{:.6}%/{:.6f}% '.format(i+1, num_epochs, train_loss, eval_loss, ptrain, peval))
-    
+
+        self.visualize_result(self.NN,
+                              self.inputs_eval,
+                              self.outputs_eval,
+                              is_save=True)
+
+    @staticmethod
+    def data_flatten(data: torch.tensor) -> Array2D:
+        """Return flatten data, and transfer to cpu
+        """
+        batch_size = data.shape[0]
+        return data.view(batch_size, -1).cpu().detach().numpy()
+
+    def _visualize_result(self, label: Array2D, 
+                          outputs: Array2D, 
+                          is_save: bool) -> None:
+        """
+        """
+        num_data = label.shape[0]
+        for i in range(num_data):
+            yref = label[i, :]
+            yout = outputs[i, :]
+            fig, ax = plt.subplots(1, 1, figsize=(40, 15))
+            fcs.set_axes_format(ax, r'Time index', r'Displacement')
+            ax.plot(yref, linewidth=0.5, linestyle='--', label=r'reference')
+            ax.plot(yout, linewidth=0.5, linestyle='-', label=r'outputs')
+            # fcs.set_axes_equal_2d(ax)
+            plt.show()
+
     def visualize_result(self, NN: torch.nn,
                          inputs: List[torch.tensor],
                          outputs: List[torch.tensor],
@@ -135,4 +169,16 @@ class PreTrain():
         outputs: the output label
         is_save: if save the plots
         """
-        
+        num_data = len(inputs)
+        for i in range(num_data):
+            data = inputs[i]
+            label = outputs[i]
+            output = NN(data.float())
+            
+            label_flatten = self.data_flatten(label)
+            output_flatten = self.data_flatten(output)
+
+            self._visualize_result(label_flatten, output_flatten, is_save)
+            
+
+

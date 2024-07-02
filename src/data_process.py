@@ -30,12 +30,33 @@ class DataSeq():
         self.height = PARAMS['height']
         self.width = PARAMS['width']
 
+    @staticmethod
+    def get_max_value(data: List[Array]) -> float:
+        """Return the maximum value
+        """
+        return np.max(np.concatenate(data))
+
+    @staticmethod
+    def get_min_value(data: List[Array]) -> float:
+        """Return the minimum value
+        """
+        return np.min(np.concatenate(data))
+    
+    def _get_min_max_value(self) -> None:
+        """Get the minimum and maximum value of the data
+        """
+        self.max_input = self.get_max_value(self.inputs)
+        self.max_output = self.get_max_value(self.outputs)
+        self.min_input = self.get_min_value(self.inputs)
+        self.min_output = self.get_min_value(self.outputs)
+
     def import_data(self, inputs: List[Array], outputs: List[Array]) -> None:
         """Import the raw data, always the first step
         """
-        self.inputs = inputs
-        self.outputs = outputs
+        self.inputs = inputs.copy()
+        self.outputs = outputs.copy()
         self.num_data = len(self.inputs)
+        self._get_min_max_value()
 
     def get_tensor_data(self, data: List[Array]) -> List[torch.tensor]:
         """Convert data to tensor
@@ -135,7 +156,19 @@ class DataSeq():
         
         return train, eval
     
-    def generate_data(self):
+
+    def normalize(self, data: List[Array],
+                  min_value: float,
+                  max_value: float) -> List[Array]:
+        """Normalize the data
+        """
+        num_data = len(data)
+        data_norm = [None] * num_data
+        for i in range(num_data):
+            data_norm[i] = (data[i]-min_value)/(max_value-min_value)
+        return data_norm
+
+    def generate_data(self, is_normalization: bool=False):
         """Generate the data for training
 
         parameters:
@@ -144,9 +177,19 @@ class DataSeq():
         total_outputs_tensor: the list of all labels
         SPLIT_IDX: the structrue data containing the indices used
                    for separating training data and evaluation data
+        is_normalization: if normalize the inputs and outputs
         """
-        total_inputs_tensor = self.get_tensor_data(self.inputs)
-        total_outputs_tensor = self.get_tensor_data(self.outputs)
+        if is_normalization is True:
+            _inputs = self.normalize(self.inputs, self.min_input, self.max_input)
+            _outputs = self.normalize(self.outputs, self.min_output, self.max_output)
+        else:
+            _inputs = self.inputs.copy()
+            _outputs = self.outputs.copy()
+
+        total_inputs_tensor = self.get_tensor_data(_inputs)
+        total_outputs_tensor = self.get_tensor_data(_outputs)
+
+
         SPLIT_IDX = self.generate_split_idx(self.k, self.batch_size, self.num_data)
         inputs_train, inputs_eval = self._split_data(total_inputs_tensor, SPLIT_IDX['batch_idx'], SPLIT_IDX['eval_idx'])
         outputs_train, outputs_eval = self._split_data(total_outputs_tensor, SPLIT_IDX['batch_idx'], SPLIT_IDX['eval_idx'])
@@ -225,7 +268,7 @@ class DataProcess():
         if mode is 'offline':
             raw_inputs, raw_outputs = self.read_raw_data(self.input_name, self.output_name)
             self._DATA_PROCESS.import_data(raw_inputs, raw_outputs)
-            return self._DATA_PROCESS.generate_data()
+            return self._DATA_PROCESS.generate_data(is_normalization=kwargs['is_normalization'])
         
         elif mode is 'online':
             pass
