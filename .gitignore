@@ -1,6 +1,9 @@
 # Ignore the virtual environment directory
 myenv/
 
+# Ignore the figures
+figure/
+
 # Ignore the ILC training data
 data/ilc/
 

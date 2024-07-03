@@ -7,8 +7,8 @@ import torch
 import random
 from typing import Tuple, List
 import matplotlib.pyplot as plt
-
-
+import os
+from datetime import datetime
 
 import utils as fcs
 from mytypes import Array, Array2D
@@ -17,6 +17,14 @@ class PreTrain():
     """
     """
     def __init__(self, mode: str, **PARAMS: dict) -> None:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
+        current_time = datetime.now()
+        folder_name = current_time.strftime("%Y%m%d_%H%M%S")
+
+        self.path_figure = os.path.join(parent_dir, 'figure', 'pretraining', folder_name)
+        fcs.mkdir(self.path_figure)
+
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.PARAMS = PARAMS
         if mode is 'seq2seq':
@@ -107,6 +115,9 @@ class PreTrain():
     def learn(self, num_epochs: int=100) -> None:
         """Call the training process
         """
+        avg_loss_train = []
+        avg_loss_eval = []
+
         for i in range(num_epochs):
             train_loss = self._train(self.NN,
                                      self.optimizer,
@@ -119,9 +130,11 @@ class PreTrain():
                                    self.inputs_eval, 
                                    self.outputs_eval)
 
-            if i == 0:
-                loss_train_ini = train_loss
-                loss_eval_ini = eval_loss
+            avg_loss_train.append(train_loss)
+            avg_loss_eval.append(eval_loss)
+
+            loss_train_ini = avg_loss_train[0]
+            loss_eval_ini = avg_loss_eval[0]
             
             ptrain = train_loss/loss_train_ini * 100
             peval = eval_loss/loss_eval_ini * 100
@@ -130,6 +143,8 @@ class PreTrain():
         self.visualize_result(self.NN,
                               self.inputs_eval,
                               self.outputs_eval,
+                              avg_loss_train,
+                              avg_loss_eval,
                               is_save=True)
 
     @staticmethod
@@ -152,12 +167,16 @@ class PreTrain():
             fcs.set_axes_format(ax, r'Time index', r'Displacement')
             ax.plot(yref, linewidth=0.5, linestyle='--', label=r'reference')
             ax.plot(yout, linewidth=0.5, linestyle='-', label=r'outputs')
-            # fcs.set_axes_equal_2d(ax)
-            plt.show()
+            if is_save is True:
+                plt.savefig(os.path.join(self.path_figure,str(i)+'.pdf'))
+            else:
+                plt.show()
 
     def visualize_result(self, NN: torch.nn,
                          inputs: List[torch.tensor],
                          outputs: List[torch.tensor],
+                         loss_train: list,
+                         loss_eval: list,
                          is_save: bool) -> None:
         """Visualize the comparison between the ouputs of 
         the neural network and the labels
@@ -169,6 +188,15 @@ class PreTrain():
         outputs: the output label
         is_save: if save the plots
         """
+        fig, ax = plt.subplots(1, 1, figsize=(40, 15))
+        fcs.set_axes_format(ax, r'Time index', r'Loss')
+        ax.plot(loss_train, linewidth=1.0, linestyle='--', label=r'Training Loss')
+        ax.plot(loss_eval, linewidth=1.0, linestyle='-', label=r'Eval Loss')
+        if is_save is True:
+            plt.savefig(os.path.join(self.path_figure,'loss.pdf'))
+        else:
+            plt.show()
+
         num_data = len(inputs)
         for i in range(num_data):
             data = inputs[i]

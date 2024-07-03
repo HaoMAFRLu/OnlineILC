@@ -37,7 +37,7 @@ def set_axes_format(ax: Axes, x_label: str, y_label: str) -> None:
     ax.spines['top'].set_linewidth(1.5)
     ax.set_xlabel(x_label, fontsize=14)
     ax.set_ylabel(y_label, fontsize=14)
-    ax.legend(loc='upper left')
+    # ax.legend(loc='upper left')
     ax.grid()
 
 
