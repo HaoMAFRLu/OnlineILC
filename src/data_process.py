@@ -37,6 +37,12 @@ class DataSeq():
         return np.max(np.concatenate(data))
 
     @staticmethod
+    def get_mean_value(data: List[Array]) -> float:
+        """Return the mean value of the data
+        """
+        return np.mean(np.concatenate(data))
+
+    @staticmethod
     def get_min_value(data: List[Array]) -> float:
         """Return the minimum value
         """
@@ -165,8 +171,10 @@ class DataSeq():
         num_data = len(data)
         data_norm = [None] * num_data
         for i in range(num_data):
-            data_norm[i] = (data[i]-min_value)/(max_value-min_value)
-        return data_norm
+            data_norm[i] = (2*(data[i]-min_value)/(max_value-min_value) - 1) * 10
+        
+        mean = self.get_mean_value(data_norm)
+        return data_norm - mean
 
     def generate_data(self, is_normalization: bool=False):
         """Generate the data for training

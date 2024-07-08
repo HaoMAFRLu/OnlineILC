@@ -33,19 +33,30 @@ class CNN_SEQ(nn.Module):
         l = int((l - filter_size)/1 + 1)
 
         self.conv3 = nn.Sequential(nn.Conv2d(in_channels=4*in_channel,
-                                             out_channels=8*in_channel,
+                                             out_channels=16*in_channel,
                                              kernel_size=(filter_size, 1),
                                              stride=(1, 1),
                                              padding=(0, 0),
                                              bias=True),
                                     nn.ReLU()
                                    )
-        self.bn3 = nn.BatchNorm2d(num_features=8*in_channel)
+        self.bn3 = nn.BatchNorm2d(num_features=16*in_channel)
         l = int((l - filter_size)/1 + 1)
 
-        self.fc = nn.Sequential(nn.Linear(8*in_channel*l, 32, bias=True) ,  
+        self.conv4 = nn.Sequential(nn.Conv2d(in_channels=16*in_channel,
+                                             out_channels=64*in_channel,
+                                             kernel_size=(filter_size, 1),
+                                             stride=(1, 1),
+                                             padding=(0, 0),
+                                             bias=True),
+                                    nn.ReLU()
+                                   )
+        self.bn4 = nn.BatchNorm2d(num_features=64*in_channel)
+        l = int((l - filter_size)/1 + 1)
+
+        self.fc = nn.Sequential(nn.Linear(64*in_channel*l, 128, bias=True) ,  
                                 nn.ReLU(),           
-                                nn.Linear(32, output_dim, bias=True)
+                                nn.Linear(128, output_dim, bias=True)
                                 # nn.Tanh()
                                 )
     
@@ -59,6 +70,9 @@ class CNN_SEQ(nn.Module):
 
         out = self.conv3(out)
         out = self.bn3(out)
+
+        out = self.conv4(out)
+        out = self.bn4(out)
 
         batch_size, channels, height, width = out.shape 
         out = out.view(-1, channels*height*width)

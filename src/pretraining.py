@@ -155,20 +155,28 @@ class PreTrain():
         return data.view(batch_size, -1).cpu().detach().numpy()
 
     def _visualize_result(self, label: Array2D, 
-                          outputs: Array2D, 
+                          outputs: Array2D,
+                          inputs: Array2D, 
                           is_save: bool) -> None:
         """
         """
         num_data = label.shape[0]
         for i in range(num_data):
-            yref = label[i, :]
-            yout = outputs[i, :]
-            fig, ax = plt.subplots(1, 1, figsize=(40, 15))
+            uref = label[i, :]
+            uout = outputs[i, :]
+            yref = inputs[i, :]
+
+            fig, axs = plt.subplots(2, 1, figsize=(15, 20))
+            ax = axs[0]
             fcs.set_axes_format(ax, r'Time index', r'Displacement')
-            ax.plot(yref, linewidth=0.5, linestyle='--', label=r'reference')
-            ax.plot(yout, linewidth=0.5, linestyle='-', label=r'outputs')
+            ax.plot(uref, linewidth=0.5, linestyle='--', label=r'reference')
+            ax.plot(uout, linewidth=0.5, linestyle='-', label=r'outputs')
+            ax = axs[1]
+            fcs.set_axes_format(ax, r'Time index', r'Input')
+            ax.plot(yref, linewidth=0.5, linestyle='-', label=r'reference')
             if is_save is True:
                 plt.savefig(os.path.join(self.path_figure,str(i)+'.pdf'))
+                plt.close()
             else:
                 plt.show()
 
@@ -188,12 +196,13 @@ class PreTrain():
         outputs: the output label
         is_save: if save the plots
         """
-        fig, ax = plt.subplots(1, 1, figsize=(40, 15))
+        fig, ax = plt.subplots(1, 1, figsize=(15, 10))
         fcs.set_axes_format(ax, r'Time index', r'Loss')
-        ax.plot(loss_train, linewidth=1.0, linestyle='--', label=r'Training Loss')
-        ax.plot(loss_eval, linewidth=1.0, linestyle='-', label=r'Eval Loss')
+        ax.semilogy(loss_train, linewidth=1.0, linestyle='--', label=r'Training Loss')
+        ax.semilogy(loss_eval, linewidth=1.0, linestyle='-', label=r'Eval Loss')
         if is_save is True:
             plt.savefig(os.path.join(self.path_figure,'loss.pdf'))
+            plt.close()
         else:
             plt.show()
 
@@ -205,8 +214,9 @@ class PreTrain():
             
             label_flatten = self.data_flatten(label)
             output_flatten = self.data_flatten(output)
+            data_flatten = self.data_flatten(data)
 
-            self._visualize_result(label_flatten, output_flatten, is_save)
+            self._visualize_result(label_flatten, output_flatten, data_flatten, is_save)
             
 
 

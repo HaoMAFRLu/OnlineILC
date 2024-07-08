@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.nn.init as init
 import torch.nn
 from network.CNN import CNN_SEQ
+from custom_loss import CustomLoss
 
 class CNN_SEQUENCE():
     """The neural network with sequences as input and output
@@ -39,15 +40,10 @@ class CNN_SEQUENCE():
                 init.constant_(layer.bias, 0)
 
     @staticmethod
-    def _get_loss_function(name: str) -> torch.nn.functional:
+    def _get_loss_function(mode: str, lambda_regression: float) -> torch.nn.functional:
         """Return the loss function of the neural network
         """
-        if name == 'Huber':
-            return torch.nn.HuberLoss()
-        if name == 'L1':
-            return torch.nn.L1Loss(reduction='mean')
-        if name == 'MSE':
-            return torch.nn.MSELoss(reduction='mean')
+        return CustomLoss(lambda_regression, mode)
 
     @staticmethod
     def _get_optimizer(NN: torch.nn, lr: float, wd: float) -> torch.nn.functional:
@@ -82,7 +78,7 @@ class CNN_SEQUENCE():
     def build_network(self) -> None:
         self.NN = self._get_model(PARAMS=self.PARAMS)
         self.NN.to(self.device)
-        self.loss_function = self._get_loss_function(self.PARAMS['loss_function'])
+        self.loss_function = self._get_loss_function(self.PARAMS['loss_function'], self.PARAMS['lambda_regression'])
         self.loss_function.to(self.device)
         self.optimizer = self._get_optimizer(self.NN, self.PARAMS['learning_rate'], self.PARAMS['weight_decay'])
         

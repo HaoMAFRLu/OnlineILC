@@ -32,6 +32,7 @@ class NN_PARAMS:
     """
     is_initialization: bool
     loss_function: str
+    lambda_regression: float
     learning_rate: float
     weight_decay: float
     channel: int

@@ -29,12 +29,13 @@ def test():
     PARAMS = NN_PARAMS(
         is_initialization=False,
         loss_function='Huber',
-        learning_rate=1e-4,
+        lambda_regression=1.0,
+        learning_rate=1e-5,
         weight_decay=0.0,
         channel=1,
         height=550,
         width=1,
-        filter_size=11,
+        filter_size=5,
         output_dim=550
     )
 
@@ -43,7 +44,7 @@ def test():
     
     PRE_TRAIN = PreTrain(mode='seq2seq', **asdict(PARAMS))
     PRE_TRAIN.import_data(data)
-    PRE_TRAIN.learn(num_epochs=10)
+    PRE_TRAIN.learn(num_epochs=3000)
 
 if __name__ == "__main__":
     test()
