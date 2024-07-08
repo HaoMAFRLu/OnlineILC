@@ -3,8 +3,9 @@
 import torch.nn.functional as F
 import torch.nn.init as init
 import torch.nn
-from network.CNN import CNN_SEQ
+from network.CNN import CNN_SEQ, SimplifiedResNet
 from custom_loss import CustomLoss
+from torchvision import models
 
 class CNN_SEQUENCE():
     """The neural network with sequences as input and output
@@ -55,11 +56,13 @@ class CNN_SEQUENCE():
     def _get_model(PARAMS) -> torch.nn:
         """Create the neural network
         """
-        return CNN_SEQ(in_channel=PARAMS['channel'],
-                       height=PARAMS['height'],
-                       width=PARAMS['width'],
-                       filter_size=PARAMS['filter_size'],
-                       output_dim=PARAMS['output_dim'])
+        # return CNN_SEQ(in_channel=PARAMS['channel'],
+        #                height=PARAMS['height'],
+        #                width=PARAMS['width'],
+        #                filter_size=PARAMS['filter_size'],
+        #                output_dim=PARAMS['output_dim'])
+        return SimplifiedResNet()
+
 
     @staticmethod
     def count_parameters(model: torch.nn) -> int:

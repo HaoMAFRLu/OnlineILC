@@ -1,6 +1,7 @@
 """Classes for different types of neural networks
 """
 import torch.nn as nn
+import torch 
 
 class CNN_SEQ(nn.Module):
     def __init__(self, in_channel: int, height: int,
@@ -79,4 +80,51 @@ class CNN_SEQ(nn.Module):
         preds = self.fc(out)
         return preds.float()
         
-
+class SimplifiedResNet(nn.Module):
+    """Simplified ResNet
+    """
+    def __init__(self, num_classes=550):
+        super(SimplifiedResNet, self).__init__()
+        
+        self.conv1 = nn.Conv2d(1, 16, kernel_size=7, stride=1, padding=3, bias=False)
+        self.bn1 = nn.BatchNorm2d(16)
+        self.relu = nn.ReLU(inplace=True)
+        
+        self.layer1 = self._make_layer(16, 16, 2)
+        self.layer2 = self._make_layer(16, 32, 2, stride=2)
+        self.layer3 = self._make_layer(32, 64, 2, stride=2)
+        self.layer4 = self._make_layer(64, 128*2, 2, stride=2)
+        
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(128*2, num_classes)
+    
+    def _make_layer(self, in_planes, out_planes, blocks, stride=1):
+        layers = []
+        layers.append(self._basic_block(in_planes, out_planes, stride))
+        for _ in range(1, blocks):
+            layers.append(self._basic_block(out_planes, out_planes))
+        return nn.Sequential(*layers)
+    
+    def _basic_block(self, in_planes, out_planes, stride=1):
+        return nn.Sequential(
+            nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False),
+            nn.BatchNorm2d(out_planes),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_planes, out_planes, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.BatchNorm2d(out_planes)
+        )
+    
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
+        return x.float()

@@ -165,13 +165,14 @@ class DataSeq():
 
     def normalize(self, data: List[Array],
                   min_value: float,
-                  max_value: float) -> List[Array]:
+                  max_value: float,
+                  scalar: float=1.0) -> List[Array]:
         """Normalize the data
         """
         num_data = len(data)
         data_norm = [None] * num_data
         for i in range(num_data):
-            data_norm[i] = (2*(data[i]-min_value)/(max_value-min_value) - 1) * 10
+            data_norm[i] = (2*(data[i]-min_value)/(max_value-min_value) - 1) * scalar
         
         mean = self.get_mean_value(data_norm)
         return data_norm - mean
@@ -189,7 +190,7 @@ class DataSeq():
         """
         if is_normalization is True:
             _inputs = self.normalize(self.inputs, self.min_input, self.max_input)
-            _outputs = self.normalize(self.outputs, self.min_output, self.max_output)
+            _outputs = self.normalize(self.outputs, self.min_output, self.max_output, scalar=1000)
         else:
             _inputs = self.inputs.copy()
             _outputs = self.outputs.copy()
