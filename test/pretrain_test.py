@@ -5,6 +5,7 @@ import numpy as np
 from dataclasses import asdict
 import random
 import torch
+import argparse
 
 random.seed(10086)
 torch.manual_seed(10086)
@@ -15,6 +16,10 @@ from pretraining import PreTrain
 from params import OFFLINE_DATA_PARAMS, NN_PARAMS 
 
 def test():
+    parser = argparse.ArgumentParser(description='offline training')
+    parser.add_argument('num_epoch', type=int, help='number of training epoch')
+    args = parser.parse_args()
+
     DATA_PARAMS = OFFLINE_DATA_PARAMS(
         mode='seq2seq',
         k=0.8,
@@ -30,7 +35,7 @@ def test():
         is_initialization=False,
         loss_function='Huber',
         lambda_regression=0.0,
-        learning_rate=1e-4,
+        learning_rate=5e-5,
         weight_decay=0.0,
         channel=1,
         height=550,
@@ -44,7 +49,7 @@ def test():
     
     PRE_TRAIN = PreTrain(mode='seq2seq', **asdict(PARAMS))
     PRE_TRAIN.import_data(data)
-    PRE_TRAIN.learn(num_epochs=1000)
+    PRE_TRAIN.learn(num_epochs=args.num_epoch)
 
 if __name__ == "__main__":
     test()
