@@ -3,7 +3,7 @@
 import torch.nn.functional as F
 import torch.nn.init as init
 import torch.nn
-from network.CNN import CNN_SEQ, SimplifiedResNet
+from network.CNN import CNN_SEQ, SimplifiedResNet, CustomResNet18
 from custom_loss import CustomLoss
 from torchvision import models
 
@@ -61,7 +61,8 @@ class CNN_SEQUENCE():
         #                width=PARAMS['width'],
         #                filter_size=PARAMS['filter_size'],
         #                output_dim=PARAMS['output_dim'])
-        return SimplifiedResNet()
+        # return SimplifiedResNet()
+        return CustomResNet18()
 
 
     @staticmethod

@@ -2,6 +2,8 @@
 """
 import torch.nn as nn
 import torch 
+import torchvision.models as models
+
 
 class CNN_SEQ(nn.Module):
     def __init__(self, in_channel: int, height: int,
@@ -128,3 +130,18 @@ class SimplifiedResNet(nn.Module):
         x = torch.flatten(x, 1)
         x = self.fc(x)
         return x.float()
+
+class CustomResNet18(nn.Module):
+    def __init__(self, input_channels=1, num_classes=550, pretrained=True):
+        super(CustomResNet18, self).__init__()
+        self.model = models.resnet18(pretrained=pretrained)
+        
+        if input_channels != 3:
+            self.model.conv1 = nn.Conv2d(input_channels, self.model.conv1.out_channels, 
+                                         kernel_size=7, stride=2, padding=3, bias=False)
+            
+        num_ftrs = self.model.fc.in_features
+        self.model.fc = nn.Linear(num_ftrs, num_classes)
+
+    def forward(self, x):
+        return self.model(x).float()
