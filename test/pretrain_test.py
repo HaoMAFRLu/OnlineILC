@@ -34,7 +34,7 @@ def test():
         k=0.8,
         batch_size=20,
         input_name='u',
-        output_name='y',
+        output_name='yout',
         channel=1,
         height=550,
         width=1
