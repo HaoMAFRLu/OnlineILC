@@ -1,3 +1,6 @@
+# Ignore the job submisssion
+test/job.sub
+
 # Ignore the virtual environment directory
 myenv/
 
