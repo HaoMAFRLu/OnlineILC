@@ -140,12 +140,12 @@ class PreTrain():
             peval = eval_loss/loss_eval_ini * 100
             print ('[Epoch {}/{}] TRAIN/VALID loss: {:.6}/{:.6f}||{:.6}%/{:.6f}% '.format(i+1, num_epochs, train_loss, eval_loss, ptrain, peval))
 
-        self.visualize_result(self.NN,
-                              self.inputs_eval,
-                              self.outputs_eval,
-                              avg_loss_train,
-                              avg_loss_eval,
-                              is_save=True)
+        # self.visualize_result(self.NN,
+        #                       self.inputs_eval,
+        #                       self.outputs_eval,
+        #                       avg_loss_train,
+        #                       avg_loss_eval,
+        #                       is_save=True)
 
     @staticmethod
     def data_flatten(data: torch.tensor) -> Array2D:
