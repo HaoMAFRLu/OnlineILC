@@ -16,6 +16,14 @@ from data_process import DataProcess
 from pretraining import PreTrain
 from params import OFFLINE_DATA_PARAMS, NN_PARAMS 
 
+def check_gpu():
+    if torch.cuda.is_available():
+        print("GPU is available.")
+        for i in range(torch.cuda.device_count()):
+            print(f"GPU {i}: {torch.cuda.get_device_name(i)}")
+    else:
+        print("GPU is not available.")
+
 def test():
     parser = argparse.ArgumentParser(description='offline training')
     parser.add_argument('num_epoch', type=int, help='number of training epoch')
@@ -60,3 +68,4 @@ def test():
 
 if __name__ == "__main__":
     test()
+    check_gpu()
