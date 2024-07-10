@@ -6,6 +6,7 @@ from dataclasses import asdict
 import random
 import torch
 import argparse
+import time
 
 random.seed(10086)
 torch.manual_seed(10086)
@@ -49,7 +50,13 @@ def test():
     
     PRE_TRAIN = PreTrain(mode='seq2seq', **asdict(PARAMS))
     PRE_TRAIN.import_data(data)
+
+    t_start = time.time()
     PRE_TRAIN.learn(num_epochs=args.num_epoch)
+    t_end = time.time()
+    total_time = t_end - t_start
+
+    print(f"Total time: {total_time} seconds")
 
 if __name__ == "__main__":
     test()
