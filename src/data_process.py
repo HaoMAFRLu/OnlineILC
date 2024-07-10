@@ -12,6 +12,16 @@ from dataclasses import dataclass
 
 from mytypes import *
 
+class DataWin():
+    """Generate windowed data
+
+    parameters:
+    -----------
+    """
+    def __init__(self) -> None:
+        pass
+
+
 class DataSeq():
     """Generate sequential inputs and outputs
 
@@ -228,7 +238,7 @@ class DataProcess():
         if PARAMS['mode'] is 'seq2seq':
             self._DATA_PROCESS = DataSeq(PARAMS)
         else:
-            pass
+            self._DATA_PROCESS = DataWin(PARAMS)
 
     def _load_keys(self) -> list:
         """Return the list of key words
