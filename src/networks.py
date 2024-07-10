@@ -55,7 +55,7 @@ class CNN_SEQUENCE():
     @staticmethod
     def _get_scheduler(optimizer: torch.nn.functional,
                        factor: float=0.1,
-                       patience: int=100):
+                       patience: int=500):
         return lr_scheduler.ReduceLROnPlateau(optimizer, 
                                               mode='min', 
                                               factor=factor, 

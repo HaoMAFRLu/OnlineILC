@@ -146,7 +146,9 @@ class PreTrain():
             
             ptrain = train_loss/loss_train_ini * 100
             peval = eval_loss/loss_eval_ini * 100
-            print ('[Epoch {}/{}] TRAIN/VALID loss: {:.6}/{:.6f}||{:.6}%/{:.6f}% '.format(i+1, num_epochs, train_loss, eval_loss, ptrain, peval))
+
+            current_lr = self.optimizer.param_groups[0]['lr']
+            print ('[Epoch {}/{}] LR: {:.6f} | TRAIN/VALID loss: {:.6}/{:.6f}||{:.6}%/{:.6f}% '.format(i+1, num_epochs, current_lr, train_loss, eval_loss, ptrain, peval))
 
             if (i+1) % self.num_check_points == 0:
                 checkpoint = {
