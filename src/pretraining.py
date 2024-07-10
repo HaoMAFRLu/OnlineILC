@@ -16,14 +16,21 @@ from mytypes import Array, Array2D
 class PreTrain():
     """
     """
-    def __init__(self, mode: str, **PARAMS: dict) -> None:
+    def __init__(self, mode: str, 
+                 **PARAMS: dict) -> None:
         current_dir = os.path.dirname(os.path.abspath(__file__))
         parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
         current_time = datetime.now()
         folder_name = current_time.strftime("%Y%m%d_%H%M%S")
 
+        # path for saving figures, deactive in cluster
         self.path_figure = os.path.join(parent_dir, 'figure', 'pretraining', folder_name)
         fcs.mkdir(self.path_figure)
+
+        # path for saving checking points
+        self.num_check_points = 1000
+        self.path_model = os.path.join(parent_dir, 'data', 'offline_training', folder_name)
+        fcs.mkdir(self.path_model)
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.PARAMS = PARAMS
@@ -130,6 +137,7 @@ class PreTrain():
                                    self.inputs_eval, 
                                    self.outputs_eval)
 
+            self.scheduler.step(eval_loss)
             avg_loss_train.append(train_loss)
             avg_loss_eval.append(eval_loss)
 
@@ -139,6 +147,15 @@ class PreTrain():
             ptrain = train_loss/loss_train_ini * 100
             peval = eval_loss/loss_eval_ini * 100
             print ('[Epoch {}/{}] TRAIN/VALID loss: {:.6}/{:.6f}||{:.6}%/{:.6f}% '.format(i+1, num_epochs, train_loss, eval_loss, ptrain, peval))
+
+            if (i+1) % self.num_check_points == 0:
+                checkpoint = {
+                    'epoch': i + 1,
+                    'model_state_dict': self.NN.state_dict(),
+                    'optimizer_state_dict': self.optimizer.state_dict()
+                }
+                check_point_path = self.path_model + '/' + f'checkpoint_epoch_{i+1}.pth'
+                torch.save(checkpoint, check_point_path)
 
         # self.visualize_result(self.NN,
         #                       self.inputs_eval,

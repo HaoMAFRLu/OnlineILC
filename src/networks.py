@@ -5,7 +5,7 @@ import torch.nn.init as init
 import torch.nn
 from network.CNN import CNN_SEQ, SimplifiedResNet, CustomResNet18
 from custom_loss import CustomLoss
-from torchvision import models
+import torch.optim.lr_scheduler as lr_scheduler
 
 class CNN_SEQUENCE():
     """The neural network with sequences as input and output
@@ -53,6 +53,15 @@ class CNN_SEQUENCE():
         return torch.optim.Adam(NN.parameters(),lr=lr,weight_decay=wd)
 
     @staticmethod
+    def _get_scheduler(optimizer: torch.nn.functional,
+                       factor: float=0.1,
+                       patience: int=100):
+        return lr_scheduler.ReduceLROnPlateau(optimizer, 
+                                              mode='min', 
+                                              factor=factor, 
+                                              patience=patience)
+
+    @staticmethod
     def _get_model(PARAMS) -> torch.nn:
         """Create the neural network
         """
@@ -85,4 +94,4 @@ class CNN_SEQUENCE():
         self.loss_function = self._get_loss_function(self.PARAMS['loss_function'], self.PARAMS['lambda_regression'])
         self.loss_function.to(self.device)
         self.optimizer = self._get_optimizer(self.NN, self.PARAMS['learning_rate'], self.PARAMS['weight_decay'])
-        
+        self.scheduler = self._get_scheduler(self.optimizer)
