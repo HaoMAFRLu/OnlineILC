@@ -18,6 +18,8 @@ from params import *
 from visualization import Visual
 
 def test():
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
     # generate the data
     DATA_PARAMS = OFFLINE_DATA_PARAMS(
     mode='seq2seq',
@@ -30,7 +32,7 @@ def test():
     width=1
     )
 
-    DATA_PROCESS = DataProcess(**asdict(DATA_PARAMS))
+    DATA_PROCESS = DataProcess(asdict(DATA_PARAMS))
     data = DATA_PROCESS.get_data('offline', is_normalization=True)
     
     # generate the model and load the pre-trained parameters
@@ -47,13 +49,20 @@ def test():
         output_dim=550
     )
 
-    VIS_PARAMS = VISUAL_PARAMS()
+    VIS_PARAMS = VISUAL_PARAMS(
+        is_save=True,
+        paths=['offline_training', '20240710_155602'],
+        checkpoint='checkpoint_epoch_5000'
+    )
 
-    NN = NETWORK_CNN('gpu', asdict(PARAMS))
-    VISUAL = Visual(VIS_PARAMS)
-    VISUAL.load_model(model=NN)
-    VISUAL.plot_results(NN, data, is_save=True)    
+    model = NETWORK_CNN(device, asdict(PARAMS))
+    model.build_network()
 
+    VISUAL = Visual(asdict(VIS_PARAMS))
+    VISUAL.load_model(model=model.NN)
+    VISUAL.plot_results(model.NN,
+                        data['inputs_eval'],
+                        data['outputs_eval'])    
 
 if __name__ == '__main__':
     test()

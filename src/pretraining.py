@@ -16,8 +16,7 @@ class PreTrain():
     """
     def __init__(self, mode: str, 
                  PARAMS: dict) -> None:
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
+        parent_dir = fcs.get_parent_path(lvl=1)
         current_time = datetime.now()
         folder_name = current_time.strftime("%Y%m%d_%H%M%S")
 

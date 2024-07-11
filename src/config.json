@@ -1,0 +1,11 @@
+{
+    "StipTime": "5.0",
+    "data_format": "seq2seq",
+    "k": 0.8,
+    "batch_size": 20,
+    "input_name": "yref",
+    "output_name": "d",
+    "channel": 1,
+    "height": 550,
+    "width": 1
+}

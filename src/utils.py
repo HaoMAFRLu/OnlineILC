@@ -39,7 +39,6 @@ def set_axes_format(ax: Axes, x_label: str, y_label: str) -> None:
     ax.spines['top'].set_linewidth(1.5)
     ax.set_xlabel(x_label, fontsize=14)
     ax.set_ylabel(y_label, fontsize=14)
-    # ax.legend(loc='upper left')
     ax.grid()
 
 def preprocess_kwargs(**kwargs):
@@ -71,3 +70,14 @@ def print_info(**kwargs):
     data = list(zip(*processed_kwargs.values()))
     table = tabulate(data, headers=columns, tablefmt="grid")
     print(table)
+
+def get_parent_path(lvl: int=0):
+    """Get the lvl-th parent path as root path.
+    Return current file path when lvl is zero.
+    Must be called under the same folder.
+    """
+    path = os.path.dirname(os.path.abspath(__file__))
+    if lvl > 0:
+        for _ in range(lvl):
+            path = os.path.abspath(os.path.join(path, os.pardir))
+    return path

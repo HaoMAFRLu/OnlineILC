@@ -1,6 +1,10 @@
 """Define the simulation parameters for different environments
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
+from pathlib import Path
+import utils as fcs
+import os
+import json
 
 @dataclass
 class Beam_SIM_PARAMS:
@@ -17,7 +21,7 @@ class OFFLINE_DATA_PARAMS:
     """The hyperparameters for genearating 
     offline training data
     """
-    mode: str
+    data_format: str
     k: float
     batch_size: int
     input_name: str
@@ -45,5 +49,55 @@ class NN_PARAMS:
 class VISUAL_PARAMS:
     """The parameters for visualization
     """
+    is_save: bool
     paths: list
-    checkpoints: str
+    checkpoint: str
+
+dataclass_map = {
+    "Beam_SIM_PARAMS": Beam_SIM_PARAMS,
+    "OFFLINE_DATA_PARAMS": OFFLINE_DATA_PARAMS,
+    "NN_PARAMS": NN_PARAMS,
+    "VISUAL_PARAMS": VISUAL_PARAMS
+}
+
+class PARAMS_GENERATOR():
+    """Generator parameters according to 
+    the config file
+    """
+    def __init__(self, PATH_CONFIG: Path=None) -> None:
+        self.root = fcs.get_parent_path()
+        self.initialization()
+        self.get_config(PATH_CONFIG)
+    
+    def get_dataclass_instance(self, config_key, CONFIG):
+        if config_key in dataclass_map:
+            dataclass_type = dataclass_map[config_key]
+            # Filter out extra keys that are not part of the dataclass
+            dataclass_fields = {field.name for field in fields(dataclass_type)}
+            filtered_data = {k: v for k, v in CONFIG.items() if k in dataclass_fields}
+            return dataclass_type(**filtered_data)
+        else:
+            raise ValueError(f"Unknown config key: {config_key}")
+
+    def initialization(self):
+        """Initialize the parameters
+        """
+        self.PARAMS = {}
+
+    def get_config(self, PATH_CONFIG: Path) -> None:
+        """Get the config file
+        """
+        if PATH_CONFIG is None:
+            PATH_CONFIG = os.path.join(self.root, 'config.json')
+        
+        with open(PATH_CONFIG, 'rb') as file:
+            self.CONFIG = json.load(file)
+        
+    def get_params(self, PARAMS_LIST: list) -> None:
+        """Generate the dataclass for the given names
+        """
+        if isinstance(PARAMS_LIST, str):
+            self.PARAMS[PARAMS_LIST] = self.get_dataclass_instance(PARAMS_LIST, self.CONFIG)
+        elif isinstance(PARAMS_LIST, list):
+            for key in PARAMS_LIST:
+                self.PARAMS[key] = self.get_dataclass_instance(key, self.CONFIG)
