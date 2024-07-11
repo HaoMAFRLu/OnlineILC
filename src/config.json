@@ -1,6 +1,9 @@
 {
     "StipTime": "5.0",
     "data_format": "seq2seq",
+    "is_normalization": true,
+    "input_scale": 1,
+    "output_scale": 1000,
     "k": 0.8,
     "batch_size": 20,
     "input_name": "u",

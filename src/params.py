@@ -22,6 +22,9 @@ class OFFLINE_DATA_PARAMS:
     offline training data
     """
     data_format: str
+    is_normalization: bool
+    input_scale: float
+    output_scale: float
     k: float
     batch_size: int
     input_name: str
@@ -34,6 +37,7 @@ class OFFLINE_DATA_PARAMS:
 class NN_PARAMS:
     """The hyperparameters for neural networks
     """
+    data_format: str
     is_initialization: bool
     loss_function: str
     lambda_regression: float

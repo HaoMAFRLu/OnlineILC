@@ -14,8 +14,7 @@ from mytypes import Array, Array2D
 class PreTrain():
     """
     """
-    def __init__(self, mode: str, 
-                 PARAMS: dict) -> None:
+    def __init__(self, PARAMS: dict) -> None:
         parent_dir = fcs.get_parent_path(lvl=1)
         current_time = datetime.now()
         folder_name = current_time.strftime("%Y%m%d_%H%M%S")
@@ -27,10 +26,13 @@ class PreTrain():
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.PARAMS = PARAMS
-        if mode is 'seq2seq':
+        
+        if self.PARAMS['data_format'] == 'seq2seq':
             self.__class__ = type('DynamicClass', (NETWORK_CNN, PreTrain), {})
-        else:
+        elif self.PARAMS['data_format'] == 'win2win':
             pass
+        else:
+            raise ValueError(f'The given data format does not exist!')
         super(self.__class__, self).__init__(self.device, PARAMS)
         
         self.build_network()

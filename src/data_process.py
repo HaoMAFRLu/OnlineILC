@@ -8,10 +8,9 @@ import pickle
 import torch
 import math
 import random
-from dataclasses import dataclass
 
 from mytypes import *
-
+import utils as fcs
 class DataWin():
     """Generate windowed data
 
@@ -20,7 +19,6 @@ class DataWin():
     """
     def __init__(self) -> None:
         pass
-
 
 class DataSeq():
     """Generate sequential inputs and outputs
@@ -33,6 +31,10 @@ class DataSeq():
     """
     def __init__(self, PARAMS: dict) -> None:
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+        self.is_normalization = PARAMS['is_normalization']
+        self.input_scale = PARAMS['input_scale']
+        self.output_scale = PARAMS['output_scale']
 
         self.k = PARAMS['k']
         self.batch_size = PARAMS['batch_size']
@@ -176,18 +178,18 @@ class DataSeq():
     def normalize(self, data: List[Array],
                   min_value: float,
                   max_value: float,
-                  scalar: float=1.0) -> List[Array]:
-        """Normalize the data
+                  scale: float=1.0) -> List[Array]:
+        """Map the data into [-1, 1]*scale
         """
         num_data = len(data)
         data_norm = [None] * num_data
         for i in range(num_data):
-            data_norm[i] = (2*(data[i]-min_value)/(max_value-min_value) - 1) * scalar
+            data_norm[i] = (2*(data[i]-min_value)/(max_value-min_value) - 1) * scale
         
         mean = self.get_mean_value(data_norm)
         return data_norm - mean
 
-    def generate_data(self, is_normalization: bool=False):
+    def generate_data(self):
         """Generate the data for training
 
         parameters:
@@ -198,9 +200,15 @@ class DataSeq():
                    for separating training data and evaluation data
         is_normalization: if normalize the inputs and outputs
         """
-        if is_normalization is True:
-            _inputs = self.normalize(self.inputs, self.min_input, self.max_input)
-            _outputs = self.normalize(self.outputs, self.min_output, self.max_output, scalar=1000)
+        if self.is_normalization is True:
+            _inputs = self.normalize(self.inputs, 
+                                     self.min_input, 
+                                     self.max_input, 
+                                     scalar=self.input_scale)
+            _outputs = self.normalize(self.outputs, 
+                                      self.min_output, 
+                                      self.max_output, 
+                                      scalar=self.output_scale)
         else:
             _inputs = self.inputs.copy()
             _outputs = self.outputs.copy()
@@ -224,8 +232,7 @@ class DataProcess():
     """Prepare the inputs and outputs (labels) for the neural network
     """
     def __init__(self, PARAMS: dict) -> None:
-        self.current_dir = os.path.dirname(os.path.abspath(__file__))
-        self.parent_dir = os.path.abspath(os.path.join(self.current_dir, os.pardir))
+        self.parent_dir = fcs.get_parent_path(lvl=1)
         self.path_data = os.path.join(self.parent_dir, 'data', 'pretraining')
         self.initialization(PARAMS)
 
@@ -235,10 +242,12 @@ class DataProcess():
         self.input_name = PARAMS['input_name']
         self.output_name = PARAMS['output_name']
 
-        if PARAMS['data_format'] is 'seq2seq':
+        if PARAMS['data_format'] == 'seq2seq':
             self._DATA_PROCESS = DataSeq(PARAMS)
-        else:
+        elif PARAMS['data_format'] == 'win2win':
             self._DATA_PROCESS = DataWin(PARAMS)
+        else:
+            raise ValueError(f'The specified data generation type does not exist！')
 
     def _load_keys(self) -> list:
         """Return the list of key words
@@ -277,20 +286,25 @@ class DataProcess():
         return raw_inputs, raw_outputs
         
 
-    def get_data(self, mode: str, **kwargs):
+    def get_data(self, mode: str):
         """Return the inputs and outputs (labels) for the neural networks
         
         parameters:
         ----------- 
         mode: get offline training data or online training data 
         """
-        if mode is 'offline':
+        if mode == 'offline':
             raw_inputs, raw_outputs = self.read_raw_data(self.input_name, self.output_name)
             self._DATA_PROCESS.import_data(raw_inputs, raw_outputs)
-            return self._DATA_PROCESS.generate_data(is_normalization=kwargs['is_normalization'])
+            return self._DATA_PROCESS.generate_data()
         
-        elif mode is 'online':
+        elif mode == 'online':
             pass
+
+        else:
+            raise ValueError(f"The given data mode does not exist!")
+
+
 
 
 

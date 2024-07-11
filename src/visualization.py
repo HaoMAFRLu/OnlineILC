@@ -16,8 +16,7 @@ class Visual():
     def __init__(self, PARAMS: dict) -> None:
         self.is_save = PARAMS["is_save"]
 
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        self.root = os.path.abspath(os.path.join(current_dir, os.pardir))
+        self.root = fcs.get_parent_path(lvl=1)
         self.folder = self.get_path_params(PARAMS['paths'])
         
         self.path_params = os.path.join(self.root, 'data', self.folder, PARAMS['checkpoint']+'.pth')

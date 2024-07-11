@@ -1,6 +1,5 @@
 """Classes for the neural networks
 """
-import torch.nn.functional as F
 import torch.nn.init as init
 import torch.nn
 from network.CNN import CNN_SEQ, SimplifiedResNet, CustomResNet18
