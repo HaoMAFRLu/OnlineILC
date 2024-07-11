@@ -1,6 +1,6 @@
 """Define the simulation parameters for different environments
 """
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, asdict
 from pathlib import Path
 import utils as fcs
 import os
@@ -54,10 +54,10 @@ class VISUAL_PARAMS:
     checkpoint: str
 
 dataclass_map = {
-    "Beam_SIM_PARAMS": Beam_SIM_PARAMS,
+    "Beam_SIM_PARAMS":     Beam_SIM_PARAMS,
     "OFFLINE_DATA_PARAMS": OFFLINE_DATA_PARAMS,
-    "NN_PARAMS": NN_PARAMS,
-    "VISUAL_PARAMS": VISUAL_PARAMS
+    "NN_PARAMS":           NN_PARAMS,
+    "VISUAL_PARAMS":       VISUAL_PARAMS
 }
 
 class PARAMS_GENERATOR():
@@ -75,7 +75,7 @@ class PARAMS_GENERATOR():
             # Filter out extra keys that are not part of the dataclass
             dataclass_fields = {field.name for field in fields(dataclass_type)}
             filtered_data = {k: v for k, v in CONFIG.items() if k in dataclass_fields}
-            return dataclass_type(**filtered_data)
+            return asdict(dataclass_type(**filtered_data))
         else:
             raise ValueError(f"Unknown config key: {config_key}")
 

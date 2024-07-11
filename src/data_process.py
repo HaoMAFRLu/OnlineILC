@@ -235,7 +235,7 @@ class DataProcess():
         self.input_name = PARAMS['input_name']
         self.output_name = PARAMS['output_name']
 
-        if PARAMS['mode'] is 'seq2seq':
+        if PARAMS['data_format'] is 'seq2seq':
             self._DATA_PROCESS = DataSeq(PARAMS)
         else:
             self._DATA_PROCESS = DataWin(PARAMS)
