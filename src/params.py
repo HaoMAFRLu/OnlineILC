@@ -46,3 +46,4 @@ class VISUAL_PARAMS:
     """The parameters for visualization
     """
     paths: list
+    checkpoints: str

@@ -4,7 +4,7 @@ from networks import NETWORK_CNN
 import torch
 import random
 from typing import Tuple, List
-import matplotlib.pyplot as plt
+
 import os
 from datetime import datetime
 
@@ -20,10 +20,6 @@ class PreTrain():
         parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
         current_time = datetime.now()
         folder_name = current_time.strftime("%Y%m%d_%H%M%S")
-
-        # path for saving figures, deactive in cluster
-        self.path_figure = os.path.join(parent_dir, 'figure', 'pretraining', folder_name)
-        fcs.mkdir(self.path_figure)
 
         # path for saving checking points
         self.num_check_points = 1000
@@ -146,23 +142,23 @@ class PreTrain():
             peval = eval_loss/loss_eval_ini * 100
 
             current_lr = self.optimizer.param_groups[0]['lr']
-            print ('[Epoch {}/{}] LR: {:.6f} | TRAIN/VALID loss: {:.6}/{:.6f}||{:.6}%/{:.6f}% '.format(i+1, num_epochs, current_lr, train_loss, eval_loss, ptrain, peval))
+            print('[Epoch {}/{}] LR: {:.6f} | TRAIN/VALID loss: {:.6}/{:.6f}||{:.6}%/{:.6f}% '.format(i+1, num_epochs, current_lr, train_loss, eval_loss, ptrain, peval))
 
             if (i+1) % self.num_check_points == 0:
-                checkpoint = {
-                    'epoch': i + 1,
-                    'model_state_dict': self.NN.state_dict(),
-                    'optimizer_state_dict': self.optimizer.state_dict()
-                }
-                check_point_path = self.path_model + '/' + f'checkpoint_epoch_{i+1}.pth'
-                torch.save(checkpoint, check_point_path)
+                self.save_checkpoint(i+1)
+        
+        self.save_loss(data=())
 
-        # self.visualize_result(self.NN,
-        #                       self.inputs_eval,
-        #                       self.outputs_eval,
-        #                       avg_loss_train,
-        #                       avg_loss_eval,
-        #                       is_save=True)
+    def save_checkpoint(self, num_epoch: int) -> None:
+        """Save the checkpoint
+        """
+        checkpoint = {
+            'epoch': num_epoch,
+            'model_state_dict': self.NN.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict()
+        }
+        check_point_path = self.path_model + '/' + f'checkpoint_epoch_{num_epoch}.pth'
+        torch.save(checkpoint, check_point_path)
 
     @staticmethod
     def data_flatten(data: torch.tensor) -> Array2D:
@@ -171,69 +167,7 @@ class PreTrain():
         batch_size = data.shape[0]
         return data.view(batch_size, -1).cpu().detach().numpy()
 
-    def _visualize_result(self, label: Array2D, 
-                          outputs: Array2D,
-                          inputs: Array2D, 
-                          is_save: bool) -> None:
-        """
-        """
-        num_data = label.shape[0]
-        for i in range(num_data):
-            uref = label[i, :]
-            uout = outputs[i, :]
-            yref = inputs[i, :]
-
-            fig, axs = plt.subplots(2, 1, figsize=(15, 20))
-            ax = axs[0]
-            fcs.set_axes_format(ax, r'Time index', r'Displacement')
-            ax.plot(uref, linewidth=0.5, linestyle='--', label=r'reference')
-            ax.plot(uout, linewidth=0.5, linestyle='-', label=r'outputs')
-            ax = axs[1]
-            fcs.set_axes_format(ax, r'Time index', r'Input')
-            ax.plot(yref, linewidth=0.5, linestyle='-', label=r'reference')
-            if is_save is True:
-                plt.savefig(os.path.join(self.path_figure,str(i)+'.pdf'))
-                plt.close()
-            else:
-                plt.show()
-
-    def visualize_result(self, NN: torch.nn,
-                         inputs: List[torch.tensor],
-                         outputs: List[torch.tensor],
-                         loss_train: list,
-                         loss_eval: list,
-                         is_save: bool) -> None:
-        """Visualize the comparison between the ouputs of 
-        the neural network and the labels
-
-        parameters:
-        -----------
-        NN: the neural network
-        inputs: the input data
-        outputs: the output label
-        is_save: if save the plots
-        """
-        fig, ax = plt.subplots(1, 1, figsize=(15, 10))
-        fcs.set_axes_format(ax, r'Time index', r'Loss')
-        ax.semilogy(loss_train, linewidth=1.0, linestyle='--', label=r'Training Loss')
-        ax.semilogy(loss_eval, linewidth=1.0, linestyle='-', label=r'Eval Loss')
-        if is_save is True:
-            plt.savefig(os.path.join(self.path_figure,'loss.pdf'))
-            plt.close()
-        else:
-            plt.show()
-
-        num_data = len(inputs)
-        for i in range(num_data):
-            data = inputs[i]
-            label = outputs[i]
-            output = NN(data.float())
-            
-            label_flatten = self.data_flatten(label)
-            output_flatten = self.data_flatten(output)
-            data_flatten = self.data_flatten(data)
-
-            self._visualize_result(label_flatten, output_flatten, data_flatten, is_save)
+    
             
 
 
