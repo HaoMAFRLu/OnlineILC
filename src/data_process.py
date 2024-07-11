@@ -204,11 +204,11 @@ class DataSeq():
             _inputs = self.normalize(self.inputs, 
                                      self.min_input, 
                                      self.max_input, 
-                                     scalar=self.input_scale)
+                                     scale=self.input_scale)
             _outputs = self.normalize(self.outputs, 
                                       self.min_output, 
                                       self.max_output, 
-                                      scalar=self.output_scale)
+                                      scale=self.output_scale)
         else:
             _inputs = self.inputs.copy()
             _outputs = self.outputs.copy()

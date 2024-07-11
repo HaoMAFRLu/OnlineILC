@@ -23,10 +23,10 @@ def check_gpu():
         print("GPU is not available.")
 
 def test():
-    # parser = argparse.ArgumentParser(description='offline training')
-    # parser.add_argument('num_epoch', type=int, help='number of training epoch')
-    # args = parser.parse_args(['10'])
-
+    parser = argparse.ArgumentParser(description='offline training')
+    parser.add_argument('num_epoch', type=int, help='number of training epoch')
+    args = parser.parse_args()
+    
     PARAMS_LIST = ["OFFLINE_DATA_PARAMS",
                    "NN_PARAMS"]
     params_generator = PARAMS_GENERATOR()
@@ -39,7 +39,7 @@ def test():
     PRE_TRAIN.import_data(data)
 
     t_start = time.time()
-    PRE_TRAIN.learn(num_epochs=10)
+    PRE_TRAIN.learn(num_epochs=args.num_epoch)
     t_end = time.time()
     total_time = t_end - t_start
 

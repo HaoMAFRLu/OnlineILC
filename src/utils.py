@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from typing import Any, List, Tuple
 from tabulate import tabulate
+import shutil
 
 from mytypes import Array, Array2D
 
@@ -81,3 +82,22 @@ def get_parent_path(lvl: int=0):
         for _ in range(lvl):
             path = os.path.abspath(os.path.join(path, os.pardir))
     return path
+
+def copy_folder(src, dst):
+    try:
+        if os.path.isdir(src):
+            folder_name = os.path.basename(os.path.normpath(src))
+            dst_folder = os.path.join(dst, folder_name)
+            shutil.copytree(src, dst_folder)
+            print(f"Folder '{src}' successfully copied to '{dst_folder}'")
+        elif os.path.isfile(src):
+            shutil.copy2(src, dst)
+            print(f"File '{src}' successfully copied to '{dst}'")
+        else:
+            print(f"Source '{src}' is neither a file nor a directory.")
+    except FileExistsError:
+        print(f"Error: Destination '{dst}' already exists.")
+    except FileNotFoundError:
+        print(f"Error: Source '{src}' not found.")
+    except Exception as e:
+        print(f"An error occurred: {e}")

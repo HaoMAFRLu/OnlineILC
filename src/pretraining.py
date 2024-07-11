@@ -7,6 +7,7 @@ from typing import Tuple, List, Any
 import os
 from datetime import datetime
 import pickle
+import shutil
 
 import utils as fcs
 from mytypes import Array, Array2D
@@ -23,10 +24,11 @@ class PreTrain():
         self.num_check_points = 1000
         self.path_model = os.path.join(parent_dir, 'data', 'offline_training', folder_name)
         fcs.mkdir(self.path_model)
+        fcs.copy_folder(os.path.join(parent_dir, 'src'), self.path_model)
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.PARAMS = PARAMS
-        
+
         if self.PARAMS['data_format'] == 'seq2seq':
             self.__class__ = type('DynamicClass', (NETWORK_CNN, PreTrain), {})
         elif self.PARAMS['data_format'] == 'win2win':
@@ -147,8 +149,8 @@ class PreTrain():
             fcs.print_info(
                 Epoch=[str(i+1)+'/'+str(num_epochs)],
                 LR=[current_lr],
-                TRAIN__slash__VALID=[str(train_loss)+'/'+str(eval_loss)],
-                TRIAN__slash__VALID__percent__=[str(ptrain)+'%/'+str(peval)+'%']
+                TRAIN__slash__VALID=[str(f"{train_loss:.3f}")+'/'+str(f"{eval_loss:.3f}")],
+                TRIAN__slash__VALID__percent__=[str(f"{ptrain:.2f}")+'%/'+str(f"{peval:.2f}")+'%']
             )
             
             if (i+1) % self.num_check_points == 0:
