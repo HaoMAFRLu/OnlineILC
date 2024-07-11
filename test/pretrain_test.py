@@ -11,6 +11,7 @@ import time
 random.seed(10086)
 torch.manual_seed(10086)
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 from data_process import DataProcess
 from pretraining import PreTrain
 from params import OFFLINE_DATA_PARAMS, NN_PARAMS 

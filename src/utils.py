@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
+from typing import Any, List, Tuple
+from tabulate import tabulate
 
 from mytypes import Array, Array2D
 
@@ -40,5 +42,32 @@ def set_axes_format(ax: Axes, x_label: str, y_label: str) -> None:
     # ax.legend(loc='upper left')
     ax.grid()
 
+def preprocess_kwargs(**kwargs):
+    """Project the key
+    """
+    replacement_rules = {
+        "__slash__": "/",
+        "__percent__": "%"
+    }
 
+    processed_kwargs = {}
+    key_map = {}
+    for key, value in kwargs.items():
+        new_key = key
+        
+        for old, new in replacement_rules.items():
+            new_key = new_key.replace(old, new)
 
+        processed_kwargs[key] = value
+        key_map[key] = new_key
+    
+    return processed_kwargs, key_map
+
+def print_info(**kwargs):
+    """Print information on the screen
+    """
+    processed_kwargs, key_map = preprocess_kwargs(**kwargs)
+    columns = [key_map[key] for key in processed_kwargs.keys()]
+    data = list(zip(*processed_kwargs.values()))
+    table = tabulate(data, headers=columns, tablefmt="grid")
+    print(table)

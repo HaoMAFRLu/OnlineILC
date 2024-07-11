@@ -3,10 +3,10 @@
 from networks import NETWORK_CNN
 import torch
 import random
-from typing import Tuple, List
-
+from typing import Tuple, List, Any
 import os
 from datetime import datetime
+import pickle
 
 import utils as fcs
 from mytypes import Array, Array2D
@@ -142,12 +142,25 @@ class PreTrain():
             peval = eval_loss/loss_eval_ini * 100
 
             current_lr = self.optimizer.param_groups[0]['lr']
-            print('[Epoch {}/{}] LR: {:.6f} | TRAIN/VALID loss: {:.6}/{:.6f}||{:.6}%/{:.6f}% '.format(i+1, num_epochs, current_lr, train_loss, eval_loss, ptrain, peval))
 
+            fcs.print_info(
+                Epoch=[str(i+1)+'/'+str(num_epochs)],
+                LR=[current_lr],
+                TRAIN__slash__VALID=[str(train_loss)+'/'+str(eval_loss)],
+                TRIAN__slash__VALID__percent__=[str(ptrain)+'%/'+str(peval)+'%']
+            )
+            
             if (i+1) % self.num_check_points == 0:
                 self.save_checkpoint(i+1)
         
-        self.save_loss(data=())
+        self.save_data(data=(avg_loss_train, avg_loss_eval))
+
+    def save_data(self, data: tuple) -> None:
+        """Save the traning loss
+        """
+        path_data = self.path_model + '/' + f'loss'
+        with open(path_data, 'wb') as file:
+            pickle.dump(data, file)
 
     def save_checkpoint(self, num_epoch: int) -> None:
         """Save the checkpoint
@@ -157,8 +170,8 @@ class PreTrain():
             'model_state_dict': self.NN.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict()
         }
-        check_point_path = self.path_model + '/' + f'checkpoint_epoch_{num_epoch}.pth'
-        torch.save(checkpoint, check_point_path)
+        path_checkpoint = self.path_model + '/' + f'checkpoint_epoch_{num_epoch}.pth'
+        torch.save(checkpoint, path_checkpoint)
 
     @staticmethod
     def data_flatten(data: torch.tensor) -> Array2D:
