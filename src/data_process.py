@@ -223,7 +223,7 @@ class DataSeq():
 class DataProcess():
     """Prepare the inputs and outputs (labels) for the neural network
     """
-    def __init__(self, **PARAMS: dict) -> None:
+    def __init__(self, PARAMS: dict) -> None:
         self.current_dir = os.path.dirname(os.path.abspath(__file__))
         self.parent_dir = os.path.abspath(os.path.join(self.current_dir, os.pardir))
         self.path_data = os.path.join(self.parent_dir, 'data', 'pretraining')

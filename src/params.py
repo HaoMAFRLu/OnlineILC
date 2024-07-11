@@ -41,3 +41,8 @@ class NN_PARAMS:
     filter_size: int
     output_dim: int
 
+@dataclass
+class VISUAL_PARAMS:
+    """The parameters for visualization
+    """
+    paths: list

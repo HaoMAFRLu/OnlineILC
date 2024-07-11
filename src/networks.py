@@ -7,7 +7,7 @@ from network.CNN import CNN_SEQ, SimplifiedResNet, CustomResNet18
 from custom_loss import CustomLoss
 import torch.optim.lr_scheduler as lr_scheduler
 
-class CNN_SEQUENCE():
+class NETWORK_CNN():
     """The neural network with sequences as input and output
     
     parameters:

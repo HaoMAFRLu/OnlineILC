@@ -1,8 +1,6 @@
 """Classes for offline training using ILC results
 """
-import numpy as np
-import torch.nn.functional as F
-from networks import CNN_SEQUENCE
+from networks import NETWORK_CNN
 import torch
 import random
 from typing import Tuple, List
@@ -17,7 +15,7 @@ class PreTrain():
     """
     """
     def __init__(self, mode: str, 
-                 **PARAMS: dict) -> None:
+                 PARAMS: dict) -> None:
         current_dir = os.path.dirname(os.path.abspath(__file__))
         parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
         current_time = datetime.now()
@@ -35,7 +33,7 @@ class PreTrain():
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.PARAMS = PARAMS
         if mode is 'seq2seq':
-            self.__class__ = type('DynamicClass', (CNN_SEQUENCE, PreTrain), {})
+            self.__class__ = type('DynamicClass', (NETWORK_CNN, PreTrain), {})
         else:
             pass
         super(self.__class__, self).__init__(self.device, PARAMS)
@@ -44,7 +42,7 @@ class PreTrain():
         if self.PARAMS['is_initialization'] is True:
             self.initialize_weight(self.NN)
     
-    def import_data(self, data: dict) -> None:
+    def import_data(self, data: dict) -> None:  
         """Read the data for pretraining
 
         parameters:

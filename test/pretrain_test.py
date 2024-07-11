@@ -11,7 +11,6 @@ import time
 random.seed(10086)
 torch.manual_seed(10086)
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 from data_process import DataProcess
 from pretraining import PreTrain
 from params import OFFLINE_DATA_PARAMS, NN_PARAMS 
@@ -27,7 +26,7 @@ def check_gpu():
 def test():
     parser = argparse.ArgumentParser(description='offline training')
     parser.add_argument('num_epoch', type=int, help='number of training epoch')
-    args = parser.parse_args()
+    args = parser.parse_args(['10'])
 
     DATA_PARAMS = OFFLINE_DATA_PARAMS(
         mode='seq2seq',
@@ -53,10 +52,10 @@ def test():
         output_dim=550
     )
 
-    DATA_PROCESS = DataProcess(**asdict(DATA_PARAMS))
+    DATA_PROCESS = DataProcess(asdict(DATA_PARAMS))
     data = DATA_PROCESS.get_data('offline', is_normalization=True)
     
-    PRE_TRAIN = PreTrain(mode='seq2seq', **asdict(PARAMS))
+    PRE_TRAIN = PreTrain('seq2seq', asdict(PARAMS))
     PRE_TRAIN.import_data(data)
 
     t_start = time.time()
