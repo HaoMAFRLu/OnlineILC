@@ -10,9 +10,9 @@ random.seed(10086)
 torch.manual_seed(10086)
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
-from data_process import DataProcess
 from pretraining import PreTrain
 from params import PARAMS_GENERATOR
+import transformer_data_generation as tdg
 
 def check_gpu():
     if torch.cuda.is_available():
@@ -23,24 +23,22 @@ def check_gpu():
         print("GPU is not available.")
 
 def test():
-    parser = argparse.ArgumentParser(description='offline training')
-    parser.add_argument('num_epoch', type=int, help='number of training epoch')
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser(description='offline training')
+    # parser.add_argument('num_epoch', type=int, help='number of training epoch')
+    # args = parser.parse_args()
 
-    PARAMS_LIST = ["OFFLINE_DATA_PARAMS",
-                   "NN_PARAMS"]
+    PARAMS_LIST = ["NN_PARAMS"]
     params_generator = PARAMS_GENERATOR()
     params_generator.get_params(PARAMS_LIST)
 
-    DATA_PROCESS = DataProcess(params_generator.PARAMS['OFFLINE_DATA_PARAMS'])
-    data = DATA_PROCESS.get_data('offline')
+    data = tdg.get_data()
     
     PRE_TRAIN = PreTrain(params_generator.PARAMS['NN_PARAMS'])
     PRE_TRAIN.import_data(data)
 
     t_start = time.time()
-    PRE_TRAIN.learn(num_epochs=args.num_epoch)
-    # PRE_TRAIN.learn(num_epochs=10)
+    # PRE_TRAIN.learn(num_epochs=args.num_epoch)
+    PRE_TRAIN.learn(num_epochs=10)
     t_end = time.time()
     total_time = t_end - t_start
 

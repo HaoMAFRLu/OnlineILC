@@ -145,3 +145,18 @@ class CustomResNet18(nn.Module):
 
     def forward(self, x):
         return self.model(x).float()
+
+class TransformerModel(nn.Module):
+    def __init__(self, input_dim, model_dim, num_heads, num_layers, output_dim, dropout=0.1):
+        super(TransformerModel, self).__init__()
+        self.model_dim = model_dim
+        self.embedding = nn.Linear(input_dim, model_dim)
+        self.transformer = nn.Transformer(d_model=model_dim, nhead=num_heads, num_encoder_layers=num_layers, num_decoder_layers=num_layers, dim_feedforward=2048, dropout=dropout, activation='relu')
+        self.fc_out = nn.Linear(model_dim, output_dim)
+    
+    def forward(self, src, tgt):
+        src = self.embedding(src) * torch.sqrt(torch.tensor(self.model_dim, dtype=torch.float32))
+        tgt = self.embedding(tgt) * torch.sqrt(torch.tensor(self.model_dim, dtype=torch.float32))
+        out = self.transformer(src, tgt)
+        out = self.fc_out(out)
+        return out

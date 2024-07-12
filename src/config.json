@@ -17,8 +17,5 @@
     "learning_rate": 1e-4,
     "weight_decay": 0.0,
     "filter_size": 5,
-    "output_dim": 550,
-    "is_save": true,
-    "paths": ["offline_training", "20240710_155602"],
-    "checkpoint": "checkpoint_epoch_5000"
+    "output_dim": 550
 }

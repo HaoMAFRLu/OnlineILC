@@ -2,7 +2,8 @@
 """
 import torch.nn.init as init
 import torch.nn
-from network.CNN import CNN_SEQ, SimplifiedResNet, CustomResNet18
+from network.CNN import CNN_SEQ, SimplifiedResNet, CustomResNet18, TransformerModel
+from network.ResNeXt import ResNeXt, Bottleneck
 from custom_loss import CustomLoss
 import torch.optim.lr_scheduler as lr_scheduler
 
@@ -70,7 +71,8 @@ class NETWORK_CNN():
         #                filter_size=PARAMS['filter_size'],
         #                output_dim=PARAMS['output_dim'])
         # return SimplifiedResNet()
-        return CustomResNet18()
+        # return CustomResNet18()
+        return ResNeXt(Bottleneck, [3, 4, 6, 3], cardinality=32, num_classes=550)
 
 
     @staticmethod

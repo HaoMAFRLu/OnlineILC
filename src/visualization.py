@@ -20,7 +20,7 @@ class Visual():
         self.folder = self.get_path_params(PARAMS['paths'])
         
         self.path_params = os.path.join(self.root, 'data', self.folder, PARAMS['checkpoint']+'.pth')
-        self.path_figure = os.path.join(self.root, 'figure', self.folder, PARAMS['checkpoint'])
+        self.path_figure = os.path.join(self.root, 'figure', self.folder, PARAMS['data'], PARAMS['checkpoint'])
         fcs.mkdir(self.path_figure)
 
     @staticmethod

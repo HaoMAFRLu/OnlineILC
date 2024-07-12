@@ -173,7 +173,6 @@ class DataSeq():
             train.append(self.split_data(data, batch_idx[i]))
         
         return train, eval
-    
 
     def normalize(self, data: List[Array],
                   min_value: float,
@@ -247,7 +246,7 @@ class DataProcess():
         elif PARAMS['data_format'] == 'win2win':
             self._DATA_PROCESS = DataWin(PARAMS)
         else:
-            raise ValueError(f'The specified data generation type does not exist！')
+            raise ValueError(f'The specified data generation type does not exist!')
 
     def _load_keys(self) -> list:
         """Return the list of key words
@@ -285,7 +284,6 @@ class DataProcess():
         raw_outputs = data[keys.index(output_name)]
         return raw_inputs, raw_outputs
         
-
     def get_data(self, mode: str):
         """Return the inputs and outputs (labels) for the neural networks
         

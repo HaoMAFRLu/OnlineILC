@@ -56,6 +56,7 @@ class VISUAL_PARAMS:
     is_save: bool
     paths: list
     checkpoint: str
+    data: str
 
 dataclass_map = {
     "Beam_SIM_PARAMS":     Beam_SIM_PARAMS,

@@ -56,6 +56,10 @@ class PreTrain():
         self.outputs_train = data['outputs_train']
         self.outputs_eval = data['outputs_eval']
 
+        # # only test
+        # self.mid_train = data['mid_train']
+        # self.mid_eval = data['mid_eval']
+
     @staticmethod
     def get_idx(num: int) -> list:
         """Get the index
@@ -67,7 +71,7 @@ class PreTrain():
         """Get the shuffle idx
         """
         return random.shuffle(idx)
-
+    
     def _train(self, NN: torch.nn, 
                optimizer: torch.optim, 
                loss_function: torch.nn.modules.loss, 
@@ -94,7 +98,6 @@ class PreTrain():
         avg_loss = total_loss/len(idx)
         return avg_loss
 
-
     def _eval(self, NN: torch.nn, 
               loss_function: torch.nn.modules.loss,
               inputs: List[torch.tensor], 
@@ -116,6 +119,7 @@ class PreTrain():
         avg_loss = total_loss/len(idx)
         return avg_loss
     
+
     def learn(self, num_epochs: int=100) -> None:
         """Call the training process
         """
