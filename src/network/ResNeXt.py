@@ -62,3 +62,4 @@ class ResNeXt(nn.Module):
         out = torch.flatten(out, 1)
         out = self.linear(out)
         return out
+

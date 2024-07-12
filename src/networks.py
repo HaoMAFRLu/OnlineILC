@@ -72,7 +72,7 @@ class NETWORK_CNN():
         #                output_dim=PARAMS['output_dim'])
         # return SimplifiedResNet()
         # return CustomResNet18()
-        return ResNeXt(Bottleneck, [3, 4, 6, 3], cardinality=32, num_classes=550)
+        return ResNeXt(Bottleneck, [2, 2, 2, 2], cardinality=8, num_classes=550)
 
 
     @staticmethod
