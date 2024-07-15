@@ -183,7 +183,7 @@ class DataSeq():
         num_data = len(data)
         data_norm = [None] * num_data
         for i in range(num_data):
-            data_norm[i] = (2*(data[i]-min_value)/(max_value-min_value) - 1) * scale
+            data_norm[i] = data[i]*scale #(2*(data[i]-min_value)/(max_value-min_value) - 1) * scale
         
         mean = self.get_mean_value(data_norm)
         return data_norm - mean

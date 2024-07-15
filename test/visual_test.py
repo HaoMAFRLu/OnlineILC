@@ -9,8 +9,12 @@ from dataclasses import asdict
 random.seed(10086)
 torch.manual_seed(10086)
 
-def test(path):
-    sys.path.append(path+'src')
+def test():
+    root = "/home/hao/Desktop/MPI/Online_Convex_Optimization/OnlineILC/data"
+    folder = "offline_training"
+    file = "20240715_085346"
+
+    sys.path.append(os.path.join(root, folder, file, 'src'))
     from networks import NETWORK_CNN
     from data_process import DataProcess
     from params import PARAMS_GENERATOR, VISUAL_PARAMS
@@ -31,15 +35,18 @@ def test(path):
 
     VIS_PARAMS = VISUAL_PARAMS(
         is_save=True,
-        paths=["offline_training", "20240711_222843"],
+        paths=[folder, file],
         checkpoint="checkpoint_epoch_10000",
         data='train'
     )
     VISUAL = Visual(asdict(VIS_PARAMS))
+
     VISUAL.load_model(model=model.NN)
+    loss_data = VISUAL.load_loss(VISUAL.path_loss)
+    VISUAL.plot_loss(loss_data)
     VISUAL.plot_results(model.NN,
-                        data['inputs_train'],
-                        data['outputs_train'])    
+                        data['inputs_'+VIS_PARAMS.data],
+                        data['outputs_'+VIS_PARAMS.data])    
 
 if __name__ == '__main__':
-    test("/home/hao/Desktop/MPI/Online_Convex_Optimization/OnlineILC/data/offline_training/20240711_222843")
+    test()

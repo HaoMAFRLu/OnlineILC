@@ -6,6 +6,7 @@ import torch.nn
 from typing import Any, List, Tuple
 import os
 import matplotlib.pyplot as plt
+import pickle
 
 import utils as fcs
 from mytypes import Array, Array2D, Array3D
@@ -20,6 +21,7 @@ class Visual():
         self.folder = self.get_path_params(PARAMS['paths'])
         
         self.path_params = os.path.join(self.root, 'data', self.folder, PARAMS['checkpoint']+'.pth')
+        self.path_loss = os.path.join(self.root, 'data', self.folder, 'loss')
         self.path_figure = os.path.join(self.root, 'figure', self.folder, PARAMS['data'], PARAMS['checkpoint'])
         fcs.mkdir(self.path_figure)
 
@@ -67,6 +69,13 @@ class Visual():
         batch_size = data.shape[0]
         return data.view(batch_size, -1).cpu().detach().numpy()
     
+    def load_loss(self, path: Path) -> Tuple[list]:
+        """Load the loss
+        """
+        with open(path, 'rb') as file:
+            data = pickle.load(file)
+        return data
+
     def plot_loss(self, data: Tuple[list]) -> None:
         """Plot the loss
 
