@@ -17,12 +17,12 @@ class CNN_SEQ(nn.Module):
                                              out_channels=8*in_channel,
                                              kernel_size=filter_size,
                                              stride=(1, 1),
-                                             padding=(0, padding),
+                                             padding=(padding, padding),
                                              bias=True),
                                     nn.ReLU()
                                   )
         self.bn1 = nn.BatchNorm2d(num_features=8*in_channel)
-        l = int((l - filter_size)/1 + 1)
+        l = int((l+2*padding - filter_size)/1 + 1)
 
         self.conv2 = nn.Sequential(nn.Conv2d(in_channels=8*in_channel,
                                              out_channels=16*in_channel,
@@ -59,9 +59,9 @@ class CNN_SEQ(nn.Module):
 
         self.fc = nn.Sequential(nn.Linear(128*in_channel*l, 512, bias=True) ,  
                                 nn.ReLU(),           
-                                nn.Linear(512, 100, bias=True),
+                                nn.Linear(512, 50, bias=True),
                                 nn.ReLU(),
-                                nn.Linear(100, output_dim, bias=True),
+                                nn.Linear(50, output_dim, bias=True),
                                 )
     
     def forward(self, inputs):

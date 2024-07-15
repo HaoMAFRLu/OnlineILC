@@ -12,9 +12,9 @@ torch.manual_seed(10086)
 def test():
     root = "/home/hao/Desktop/MPI/Online_Convex_Optimization/OnlineILC/data"
     folder = "offline_training"
-    file = "20240715_085346"
-
-    sys.path.append(os.path.join(root, folder, file, 'src'))
+    file = "20240715_125124"
+    path = os.path.join(root, folder, file, 'src')
+    # sys.path.insert(0, path)
     from networks import NETWORK_CNN
     from data_process import DataProcess
     from params import PARAMS_GENERATOR, VISUAL_PARAMS
@@ -24,7 +24,7 @@ def test():
     PARAMS_LIST = ["OFFLINE_DATA_PARAMS",
                    "NN_PARAMS"]
     
-    params_generator = PARAMS_GENERATOR()
+    params_generator = PARAMS_GENERATOR(os.path.join(path, 'config.json'))
     params_generator.get_params(PARAMS_LIST)
 
     DATA_PROCESS = DataProcess(params_generator.PARAMS['OFFLINE_DATA_PARAMS'])
