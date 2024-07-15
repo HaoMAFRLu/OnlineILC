@@ -67,8 +67,8 @@ class PreTrain():
         U_, S, Vt = np.linalg.svd(A, full_matrices=False)
         U = U_[:, 0:num_sigma]
 
-        for param in self.NN.fc[4].parameters():
-            param.requires_grad = False
+        # for param in self.NN.fc[4].parameters():
+        #     param.requires_grad = False
         
         self.NN.fc[4].weight.data = torch.tensor(U).to(self.device)
         print('here')
