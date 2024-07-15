@@ -62,7 +62,7 @@ class PreTrain():
         # self.mid_eval = data['mid_eval']
 
     def reconstruct_NN(self) -> None:
-        num_sigma = 100
+        num_sigma = 300
         A = torch.cat(self.outputs_train).squeeze().permute(1, 0).cpu().detach().numpy()
         U_, S, Vt = np.linalg.svd(A, full_matrices=False)
         U = U_[:, 0:num_sigma]
