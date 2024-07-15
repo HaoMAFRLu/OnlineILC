@@ -61,7 +61,7 @@ class CNN_SEQ(nn.Module):
                                 nn.ReLU(),           
                                 nn.Linear(512, 100, bias=True),
                                 nn.ReLU(),
-                                nn.Linear(100, output_dim, bias=False),
+                                nn.Linear(100, output_dim, bias=True),
                                 )
     
     def forward(self, inputs):

@@ -39,8 +39,8 @@ def test():
     PRE_TRAIN.import_data(data)
 
     t_start = time.time()
-    PRE_TRAIN.learn(num_epochs=args.num_epoch)
     PRE_TRAIN.reconstruct_NN()
+    PRE_TRAIN.learn(num_epochs=args.num_epoch)
     # PRE_TRAIN.learn(num_epochs=10)
    
     t_end = time.time()
