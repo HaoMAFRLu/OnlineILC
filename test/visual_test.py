@@ -12,7 +12,7 @@ torch.manual_seed(10086)
 def test():
     root = "/home/hao/Desktop/MPI/Online_Convex_Optimization/OnlineILC/data"
     folder = "offline_training"
-    file = "20240715_125124"
+    file = "20240715_165417"
     path = os.path.join(root, folder, file, 'src')
     # sys.path.insert(0, path)
     from networks import NETWORK_CNN
@@ -36,14 +36,14 @@ def test():
     VIS_PARAMS = VISUAL_PARAMS(
         is_save=True,
         paths=[folder, file],
-        checkpoint="checkpoint_epoch_10000",
-        data='train'
+        checkpoint="checkpoint_epoch_1000",
+        data='eval'
     )
     VISUAL = Visual(asdict(VIS_PARAMS))
 
     VISUAL.load_model(model=model.NN)
-    loss_data = VISUAL.load_loss(VISUAL.path_loss)
-    VISUAL.plot_loss(loss_data)
+    # loss_data = VISUAL.load_loss(VISUAL.path_loss)
+    # VISUAL.plot_loss(loss_data)
     VISUAL.plot_results(model.NN,
                         data['inputs_'+VIS_PARAMS.data],
                         data['outputs_'+VIS_PARAMS.data])    
