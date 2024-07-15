@@ -3,64 +3,65 @@
 import torch.nn as nn
 import torch 
 import torchvision.models as models
-
+import math
 
 class CNN_SEQ(nn.Module):
     def __init__(self, in_channel: int, height: int,
-                 width: int, filter_size: int, output_dim: int,
-                 padding1: int=3, padding2: int=3) -> None:
+                 width: int, filter_size: int, output_dim: int) -> None:
         """Create the CNN with sequential inputs and outputs
         """
         super().__init__()
         l = height
+        padding = math.floor(filter_size/2)
         self.conv1 = nn.Sequential(nn.Conv2d(in_channels=in_channel,
-                                             out_channels=2*in_channel,
-                                             kernel_size=(filter_size, 1),
+                                             out_channels=8*in_channel,
+                                             kernel_size=filter_size,
                                              stride=(1, 1),
-                                             padding=(padding1, 0),
+                                             padding=(0, padding),
                                              bias=True),
                                     nn.ReLU()
                                   )
-        self.bn1 = nn.BatchNorm2d(num_features=2*in_channel)
-        l = int((l+padding1+padding2 - filter_size)/1 + 1)
-
-        self.conv2 = nn.Sequential(nn.Conv2d(in_channels=2*in_channel,
-                                             out_channels=4*in_channel,
-                                             kernel_size=(filter_size, 1),
-                                             stride=(1, 1),
-                                             padding=(0, 0),
-                                             bias=True),
-                                    nn.ReLU()
-                                   )
-        self.bn2 = nn.BatchNorm2d(num_features=4*in_channel)
+        self.bn1 = nn.BatchNorm2d(num_features=8*in_channel)
         l = int((l - filter_size)/1 + 1)
 
-        self.conv3 = nn.Sequential(nn.Conv2d(in_channels=4*in_channel,
+        self.conv2 = nn.Sequential(nn.Conv2d(in_channels=8*in_channel,
                                              out_channels=16*in_channel,
-                                             kernel_size=(filter_size, 1),
+                                             kernel_size=filter_size,
                                              stride=(1, 1),
-                                             padding=(0, 0),
+                                             padding=(0, padding),
                                              bias=True),
                                     nn.ReLU()
                                    )
-        self.bn3 = nn.BatchNorm2d(num_features=16*in_channel)
+        self.bn2 = nn.BatchNorm2d(num_features=16*in_channel)
         l = int((l - filter_size)/1 + 1)
 
-        self.conv4 = nn.Sequential(nn.Conv2d(in_channels=16*in_channel,
-                                             out_channels=64*in_channel,
-                                             kernel_size=(filter_size, 1),
+        self.conv3 = nn.Sequential(nn.Conv2d(in_channels=16*in_channel,
+                                             out_channels=32*in_channel,
+                                             kernel_size=filter_size,
                                              stride=(1, 1),
-                                             padding=(0, 0),
+                                             padding=(0, padding),
                                              bias=True),
                                     nn.ReLU()
                                    )
-        self.bn4 = nn.BatchNorm2d(num_features=64*in_channel)
+        self.bn3 = nn.BatchNorm2d(num_features=32*in_channel)
         l = int((l - filter_size)/1 + 1)
 
-        self.fc = nn.Sequential(nn.Linear(64*in_channel*l, 128, bias=True) ,  
+        self.conv4 = nn.Sequential(nn.Conv2d(in_channels=32*in_channel,
+                                             out_channels=128*in_channel,
+                                             kernel_size=filter_size,
+                                             stride=(1, 1),
+                                             padding=(0, padding),
+                                             bias=True),
+                                    nn.ReLU()
+                                   )
+        self.bn4 = nn.BatchNorm2d(num_features=128*in_channel)
+        l = int((l - filter_size)/1 + 1)
+
+        self.fc = nn.Sequential(nn.Linear(128*in_channel*l, 512, bias=True) ,  
                                 nn.ReLU(),           
-                                nn.Linear(128, output_dim, bias=True)
-                                # nn.Tanh()
+                                nn.Linear(512, 100, bias=True),
+                                nn.ReLU(),
+                                nn.Linear(100, output_dim, bias=True),
                                 )
     
     def forward(self, inputs):

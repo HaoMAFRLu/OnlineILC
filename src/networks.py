@@ -65,14 +65,14 @@ class NETWORK_CNN():
     def _get_model(PARAMS) -> torch.nn:
         """Create the neural network
         """
-        # return CNN_SEQ(in_channel=PARAMS['channel'],
-        #                height=PARAMS['height'],
-        #                width=PARAMS['width'],
-        #                filter_size=PARAMS['filter_size'],
-        #                output_dim=PARAMS['output_dim'])
+        return CNN_SEQ(in_channel=PARAMS['channel'],
+                       height=PARAMS['height'],
+                       width=PARAMS['width'],
+                       filter_size=PARAMS['filter_size'],
+                       output_dim=PARAMS['output_dim'])
         # return SimplifiedResNet()
         # return CustomResNet18()
-        return ResNeXt(Bottleneck, [2, 2, 2, 2], cardinality=8, num_classes=550)
+        # return ResNeXt(Bottleneck, [2, 2, 2, 2], cardinality=8, num_classes=550)
 
 
     @staticmethod
