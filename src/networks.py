@@ -50,7 +50,7 @@ class NETWORK_CNN():
     def _get_optimizer(NN: torch.nn, lr: float, wd: float) -> torch.nn.functional:
         """Return the optimizer of the neural network
         """
-        return torch.optim.Adam(NN.parameters(),lr=lr,weight_decay=wd)
+        return torch.optim.Adam(filter(lambda p: p.requires_grad, NN.parameters()), lr=lr,weight_decay=wd)
 
     @staticmethod
     def _get_scheduler(optimizer: torch.nn.functional,

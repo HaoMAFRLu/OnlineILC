@@ -8,6 +8,7 @@ import os
 from datetime import datetime
 import pickle
 import shutil
+import numpy as np
 
 import utils as fcs
 from mytypes import Array, Array2D
@@ -59,6 +60,19 @@ class PreTrain():
         # # only test
         # self.mid_train = data['mid_train']
         # self.mid_eval = data['mid_eval']
+
+    def reconstruct_NN(self) -> None:
+        num_sigma = 100
+        A = torch.cat(self.outputs_train).squeeze().permute(1, 0).cpu().detach().numpy()
+        U_, S, Vt = np.linalg.svd(A, full_matrices=False)
+        U = U_[:, 0:num_sigma]
+
+        for param in self.NN.fc[4].parameters():
+            param.requires_grad = False
+        
+        self.NN.fc[4].weight.data = torch.tensor(U).to(self.device)
+        print('here')
+
 
     @staticmethod
     def get_idx(num: int) -> list:

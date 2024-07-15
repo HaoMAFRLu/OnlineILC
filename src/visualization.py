@@ -111,8 +111,8 @@ class Visual():
             fig, axs = plt.subplots(2, 1, figsize=(15, 20))
             ax = axs[0]
             fcs.set_axes_format(ax, r'Time index', r'Displacement')
-            ax.plot(uref/1000, linewidth=1.0, linestyle='--', label=r'reference')
-            ax.plot(uout/1000, linewidth=1.0, linestyle='-', label=r'outputs')
+            ax.plot(uref, linewidth=1.0, linestyle='--', label=r'reference')
+            ax.plot(uout, linewidth=1.0, linestyle='-', label=r'outputs')
             ax.legend(fontsize=14)
 
             ax = axs[1]
