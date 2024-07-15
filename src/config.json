@@ -15,7 +15,7 @@
     "loss_function": "Huber",
     "lambda_regression": 1e-4,
     "learning_rate": 5e-5,
-    "weight_decay": 5e-4,
+    "weight_decay": 4e-4,
     "filter_size": 7,
     "output_dim": 550
 }
