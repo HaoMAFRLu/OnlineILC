@@ -22,7 +22,7 @@ class PreTrain():
         folder_name = current_time.strftime("%Y%m%d_%H%M%S")
 
         # path for saving checking points
-        self.num_check_points = 1000
+        self.num_check_points = 100
         self.path_model = os.path.join(parent_dir, 'data', 'offline_training', folder_name)
         fcs.mkdir(self.path_model)
         fcs.copy_folder(os.path.join(parent_dir, 'src'), self.path_model)

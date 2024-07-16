@@ -53,10 +53,13 @@ class OnlineLearning():
         self.env = environmnet.BEAM('Control_System', PARAMS)
         self.env.initialization()
 
-    def data_process_initializetion(self, PARAMS: dict) -> None:
+    def data_process_initialization(self, path: Path, PARAMS: dict) -> None:
         """
         """
-        
+        DATA_PROCESS = data_process.DataProcess('online', PARAMS)
+        data = DATA_PROCESS.get_data(root=path, raw_inputs=None)
+        print('here')
+
 
 
     def initialization(self, path: Path) -> torch.nn:
@@ -78,4 +81,4 @@ class OnlineLearning():
 
         SIM_PARAMS, DATA_PARAMS, NN_PARAMS = self.get_params()
         self.env_initialization(SIM_PARAMS)
-        self.data_process_initialization(DATA_PARAMS)
+        self.data_process_initialization(path, DATA_PARAMS)

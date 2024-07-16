@@ -62,7 +62,7 @@ class CNN_SEQ(nn.Module):
         # self.bn4 = nn.BatchNorm2d(num_features=128*in_channel)
         # l = int((l - filter_size)/1 + 1)
 
-        self.fc = nn.Sequential(nn.Linear(32*in_channel*107, 128, bias=True) ,  
+        self.fc = nn.Sequential(nn.Linear(32*in_channel*l, 128, bias=True) ,  
                                 nn.ReLU(),           
                                 nn.Linear(128, 64, bias=True),
                                 nn.ReLU(),
@@ -80,7 +80,7 @@ class CNN_SEQ(nn.Module):
         out = self.bn2(out)
 
         out = self.conv3(out)
-        out = self.avg_pool3(out)
+        # out = self.avg_pool3(out)
         out = self.bn3(out)
 
         # out = self.conv4(out)

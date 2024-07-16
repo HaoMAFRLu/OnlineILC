@@ -9,6 +9,7 @@ import torch
 import math
 import random
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 from mytypes import *
 import utils as fcs
@@ -47,6 +48,11 @@ class DataSeq():
         """Do nothing
         """
         return data
+    
+    def inverse_preprocess(self, data: List[Array], **kwargs) -> List[Array]:
+        """Do nothing
+        """
+        return data
 
     def generate_data(self, mode: str, **kwargs: Any):
         """Generate data: 
@@ -62,11 +68,72 @@ class DataSeq():
                                               kwargs['outputs'],
                                               kwargs['SPLIT_IDX'])
         elif mode == 'online':
-            return self.generate_online_data(kwargs['data'],
+            return self.generate_online_data(kwargs['inputs'],
                                              kwargs['norm_params'])
+
+    @staticmethod
+    def inverse_CNS(data: List[Array], preprocess: str, 
+                    **kwargs: float) -> List[Array]:
+        """inverse [C]enterize/[N]ormalize/[S]calize the input data
+        """
+        def _inverse_CNS(_data):
+            if preprocess == 'C':
+                return _data + kwargs['mean']
+            elif preprocess == 'N':
+                return (_data + 1) * (kwargs['max_value']-kwargs['min_value'])/2 + kwargs['min_value']
+            elif preprocess == 'S':
+                return _data/kwargs['scale']
+        
+        if isinstance(data, list):
+            num = len(data)
+            processed_data = [None]*num
+            for i in range(num):
+                processed_data[i] = _inverse_CNS(data[i])
+        elif isinstance(data, np.ndarray):
+            processed_data = _inverse_CNS(data)
+        else:
+            raise ValueError("Unsupported data type. Expected list or numpy array.")
+        return processed_data
     
-    def generate_online_data(self):
-        pass
+    def inverse_online_data(self, scale_outputs: Array, norm_params: dict) -> Array:
+        """Inverse the normalization process
+        """
+        norm_outputs = self.inverse_CNS(scale_outputs, 'S', scale=norm_params['output_scale'])
+
+        if self.is_normalization is True:
+            center_outputs = self.inverse_CNS(norm_outputs, 'N', 
+                                      min_value=norm_params['output_min'], 
+                                      max_value=norm_params['output_max']) 
+        else:
+            center_outputs = norm_outputs.copy()
+
+        if self.is_centerization is True:
+            outputs = self.inverse_CNS(center_outputs, 'C', mean=norm_params['input_mean'])
+        else:
+            outputs = center_outputs.copy()
+
+        return outputs
+
+    def generate_online_data(self, inputs: Array, 
+                             norm_params: dict) -> Array:
+        """Genearate data for online training
+        """
+        if self.is_centerization is True:
+            center_inputs = self.CNS(inputs, 'C', mean=norm_params['input_mean'])
+        else:
+            center_inputs = inputs.copy()
+        
+        if self.is_normalization is True:
+            norm_inputs = self.CNS(center_inputs, 'N', 
+                                    min_value=norm_params['input_min'], 
+                                    max_value=norm_params['input_max']) 
+        else:
+            norm_inputs = center_inputs.copy()     
+
+        scale_inputs = self.CNS(norm_inputs, 'S', scale=norm_params['input_scale'])
+
+        inputs_tensor = self.get_tensor_data(scale_inputs)
+        return inputs_tensor
 
     def generate_offline_data(self, inputs: List[Array],
                               outputs: List[Array],
@@ -79,8 +146,8 @@ class DataSeq():
         5. scalize all the (normalized) inputs and outputs
         6. save the preprocess parameters
         """
-        input_mean = self.get_mean_value(inputs[SPLIT_IDX['train_idx']])
-        output_mean = self.get_mean_value(outputs[SPLIT_IDX['train_idx']])
+        input_mean = self.get_mean_value([inputs[i] for i in SPLIT_IDX['train_idx']])
+        output_mean = self.get_mean_value([outputs[i] for i in SPLIT_IDX['train_idx']])
         
         if self.is_centerization is True:
             center_inputs = self.CNS(inputs, 'C', mean=input_mean)
@@ -89,18 +156,21 @@ class DataSeq():
             center_inputs = inputs.copy()
             center_outputs = outputs.copy()
 
-        input_min = self.get_min_value(center_inputs[SPLIT_IDX['train_idx']])
-        input_max = self.get_max_value(center_inputs[SPLIT_IDX['train_idx']])
-        output_min = self.get_min_value(center_outputs[SPLIT_IDX['train_idx']])
-        output_max = self.get_max_value(center_outputs[SPLIT_IDX['train_idx']])
+        input_min = self.get_min_value([center_inputs[i] for i in SPLIT_IDX['train_idx']])
+        input_max = self.get_max_value([center_inputs[i] for i in SPLIT_IDX['train_idx']])
+        output_min = self.get_min_value([center_outputs[i] for i in SPLIT_IDX['train_idx']])
+        output_max = self.get_max_value([center_outputs[i] for i in SPLIT_IDX['train_idx']])
         
         if self.is_normalization is True:
             norm_inputs = self.CNS(center_inputs, 'N', 
-                                        min_value=input_min, 
-                                        max_value=input_max)    
+                                    min_value=input_min, 
+                                    max_value=input_max)    
             norm_outputs = self.CNS(center_outputs, 'N', 
-                                         min_value=output_min, 
-                                         max_value=output_max)    
+                                    min_value=output_min, 
+                                    max_value=output_max)
+        else:
+            norm_inputs = center_inputs.copy()
+            norm_outputs = center_outputs.copy()
 
         scale_inputs = self.CNS(norm_inputs, 'S', scale=self.input_scale)
         scale_outputs = self.CNS(norm_outputs, 'S', scale=self.output_scale)
@@ -161,7 +231,7 @@ class DataSeq():
             if preprocess == 'C':
                 return _data - kwargs['mean']
             elif preprocess == 'N':
-                return 2*_data-kwargs['min_value']/(kwargs['max_value']-kwargs['min_value']) - 1
+                return 2*(_data-kwargs['min_value'])/(kwargs['max_value']-kwargs['min_value']) - 1
             elif preprocess == 'S':
                 return _data*kwargs['scale']
         
@@ -216,15 +286,17 @@ class DataProcess():
         |-- input_name: name of the inputs
         |-- output_name: name of the outputs
     """
-    def __init__(self, PARAMS: dict) -> None:
+    def __init__(self, mode: str, PARAMS: dict) -> None:
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.root = fcs.get_parent_path(lvl=1)
-        self.mode = PARAMS['mode']
+        self.root = fcs.get_parent_path(lvl=0)
+        self.mode = mode
         self.data_format = PARAMS['data_format']
+        
         self.norm_params = None
+        self.SPLIT_IDX = None
 
         self.PARAMS = PARAMS
-        self.initialization(self.PARAMS)
+        self.initialization()
 
     @staticmethod
     def select_idx(idx: list, num: int) -> list:
@@ -266,10 +338,10 @@ class DataProcess():
         eval_idx = list(set(all_idx) - set(train_idx))
         return all_idx, train_idx, eval_idx
 
-    def get_SPLIT_IDX(self, num_data: int) -> dict:
+    def get_SPLIT_IDX(self, k: int, num_data: int) -> dict:
         """
         """
-        all_idx, train_idx, eval_idx = self.get_idx(num_data)
+        all_idx, train_idx, eval_idx = self.get_idx(k, num_data)
         batch_idx = self.select_batch_idx(train_idx, self.PARAMS['batch_size'])
         
         SPLIT_IDX = {
@@ -290,7 +362,7 @@ class DataProcess():
         with open(path, 'wb') as file:
             pickle.dump(data_dict, file, protocol=pickle.HIGHEST_PROTOCOL)
 
-    def _offline_init(self, PARAMS: dict) -> None:
+    def _offline_init(self) -> None:
         """Initialize the data process in an offline
         manner. The offline data is used for offline
         training.
@@ -300,9 +372,9 @@ class DataProcess():
         4. split training dataset into mini batch
         5. save the data and indices
         """
-        input_name = PARAMS['input_name']
-        output_name = PARAMS['output_name']
-        self.path_data = os.path.join(self.root, 'pretaining')
+        input_name = self.PARAMS['input_name']
+        output_name = self.PARAMS['output_name']
+        self.path_data = os.path.join(self.root, 'data', 'pretraining')
         
         keys = self._load_keys()
         data = self._load_data()
@@ -311,13 +383,6 @@ class DataProcess():
         raw_outputs = data[keys.index(output_name)]
         return raw_inputs, raw_outputs
     
-
-    def _online_init(self, PARAMS: dict) -> None:
-        """Initialize the data process in an online
-        manner
-        """
-        pass
-
     def initialization(self):
         """Initialize the data process
         1. load the data processor
@@ -346,7 +411,18 @@ class DataProcess():
             data = pickle.load(file)
         return data
 
-    def get_data(self):
+    def import_data(self, raw_inputs: Array) -> None:
+        """Import the online data
+        """
+        self.raw_inputs = raw_inputs.copy()
+
+    def inverse_output(self, scale_outputs: Array) -> Array:
+        """Inverse the output data
+        """
+        preprocess_outputs = self._DATA_PROCESS.inverse_preprocess(scale_outputs, target='output')
+        return self._DATA_PROCESS.inverse_online_data(preprocess_outputs, self.norm_params)
+ 
+    def get_data(self, **kwargs):
         """Return the inputs and outputs (labels) for the neural networks
         
         parameters:
@@ -355,25 +431,42 @@ class DataProcess():
         """
         if self.mode == 'offline':
             raw_inputs, raw_outputs = self._offline_init()
-            preprocess_inputs = self._DATA_PROCESS.preprocess_data(raw_inputs, 'input')
-            preprocess_outputs = self._DATA_PROCESS.preprocess_data(raw_outputs, 'output')
-            SPLIT_IDX = self.get_SPLIT_IDX(len(preprocess_inputs))
+            preprocess_inputs = self._DATA_PROCESS.preprocess_data(raw_inputs, target='input')
+            preprocess_outputs = self._DATA_PROCESS.preprocess_data(raw_outputs, target='output')
+
+            if self.SPLIT_IDX is None:
+                self.SPLIT_IDX = self.get_SPLIT_IDX(self.PARAMS['k'], len(preprocess_inputs))
+        
             data, norm_params = self._DATA_PROCESS.generate_data('offline', inputs=preprocess_inputs, 
                                                                 outputs=preprocess_outputs,
-                                                                SPLIT_IDX=SPLIT_IDX)
+                                                                SPLIT_IDX=self.SPLIT_IDX)
+            
             self.save_data(self.path_data, 'SPLIT_DATA', raw_inputs=raw_inputs,
-                           raw_outputs=raw_outputs, SPLIT_IDX=SPLIT_IDX)
+                           raw_outputs=raw_outputs, SPLIT_IDX=self.SPLIT_IDX)
+            
             self.save_data(self.path_data, 'norm_params', norm_params=norm_params)
             return data
             
-
         elif self.mode == 'online':
-            self._online_init()
+            preprocess_inputs = self._DATA_PROCESS.preprocess_data(kwargs['raw_inputs'], target='input')
+            if self.norm_params is None:
+                self.norm_params = self.load_norm_params(kwargs['root'])
+            data, norm_params = self._DATA_PROCESS.generate_data('online', inputs=preprocess_inputs,
+                                                                 norm_params=self.norm_params)
         
         else:
             raise ValueError(f'The specified data mode does not exist!')
 
+    def load_norm_params(self, root: Path) -> dict:
+        """Load the norm parameters
 
-
-
+        parameters:
+        -----------
+        root: path to the src folder
+        """
+        path = os.path.join(root, 'data', 'pretraining', 'src')
+        with open(path, 'rb') as file:
+            norm_params = pickle.load(file)
+        return norm_params
+            
 

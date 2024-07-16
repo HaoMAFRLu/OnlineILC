@@ -32,8 +32,8 @@ def test():
     params_generator = PARAMS_GENERATOR()
     params_generator.get_params(PARAMS_LIST)
 
-    DATA_PROCESS = DataProcess(params_generator.PARAMS['OFFLINE_DATA_PARAMS'])
-    data = DATA_PROCESS.get_data('offline')
+    DATA_PROCESS = DataProcess('offline', params_generator.PARAMS['OFFLINE_DATA_PARAMS'])
+    data = DATA_PROCESS.get_data()
     
     PRE_TRAIN = PreTrain(params_generator.PARAMS['NN_PARAMS'])
     PRE_TRAIN.import_data(data)

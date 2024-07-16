@@ -23,6 +23,7 @@ class OFFLINE_DATA_PARAMS:
     """
     data_format: str
     is_normalization: bool
+    is_centerization: bool
     input_scale: float
     output_scale: float
     k: float
@@ -89,7 +90,7 @@ class PARAMS_GENERATOR():
         """
         self.PARAMS = {}
 
-    def get_config(self, PATH_CONFIG: Path) -> None:
+    def get_config(self, PATH_CONFIG: Path=None) -> None:
         """Get the config file
         """
         if PATH_CONFIG is None:
