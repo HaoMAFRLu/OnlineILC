@@ -28,18 +28,6 @@ class CNN_SEQ(nn.Module):
         
 
         self.conv2 = nn.Sequential(nn.Conv2d(in_channels=8*in_channel,
-                                             out_channels=16*in_channel,
-                                             kernel_size=filter_size,
-                                             stride=(1, 1),
-                                             padding=(0, padding),
-                                             bias=True),
-                                    nn.ReLU()
-                                   )
-        self.avg_pool2 = nn.MaxPool2d(kernel_size=(3, 1), stride=(3, 1))
-        self.bn2 = nn.BatchNorm2d(num_features=16*in_channel)
-        l = int((l - filter_size)/1 + 1)
-
-        self.conv3 = nn.Sequential(nn.Conv2d(in_channels=16*in_channel,
                                              out_channels=32*in_channel,
                                              kernel_size=filter_size,
                                              stride=(1, 1),
@@ -47,8 +35,20 @@ class CNN_SEQ(nn.Module):
                                              bias=True),
                                     nn.ReLU()
                                    )
-        self.avg_pool3 = nn.AvgPool2d(kernel_size=(5, 1), stride=(5, 1))
-        self.bn3 = nn.BatchNorm2d(num_features=32*in_channel)
+        self.avg_pool2 = nn.MaxPool2d(kernel_size=(3, 1), stride=(3, 1))
+        self.bn2 = nn.BatchNorm2d(num_features=32*in_channel)
+        l = int((l - filter_size)/1 + 1)
+
+        self.conv3 = nn.Sequential(nn.Conv2d(in_channels=32*in_channel,
+                                             out_channels=128*in_channel,
+                                             kernel_size=filter_size,
+                                             stride=(1, 1),
+                                             padding=(0, padding),
+                                             bias=True),
+                                    nn.ReLU()
+                                   )
+        self.avg_pool3 = nn.AvgPool2d(kernel_size=(3, 1), stride=(3, 1))
+        self.bn3 = nn.BatchNorm2d(num_features=128*in_channel)
         l = int((l - filter_size)/1 + 1)
 
         # self.conv4 = nn.Sequential(nn.Conv2d(in_channels=32*in_channel,
@@ -62,7 +62,7 @@ class CNN_SEQ(nn.Module):
         # self.bn4 = nn.BatchNorm2d(num_features=128*in_channel)
         # l = int((l - filter_size)/1 + 1)
 
-        self.fc = nn.Sequential(nn.Linear(32*in_channel*l, 128, bias=True) ,  
+        self.fc = nn.Sequential(nn.Linear(128*in_channel*17, 128, bias=True) ,  
                                 nn.ReLU(),           
                                 nn.Linear(128, 64, bias=True),
                                 nn.ReLU(),
@@ -72,15 +72,15 @@ class CNN_SEQ(nn.Module):
     def forward(self, inputs):
         preds = None
         out = self.conv1(inputs)
-        # out = self.avg_pool1(out)
+        out = self.avg_pool1(out)
         out = self.bn1(out)
 
         out = self.conv2(out)
-        # out = self.avg_pool2(out)
+        out = self.avg_pool2(out)
         out = self.bn2(out)
 
         out = self.conv3(out)
-        # out = self.avg_pool3(out)
+        out = self.avg_pool3(out)
         out = self.bn3(out)
 
         # out = self.conv4(out)
