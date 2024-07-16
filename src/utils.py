@@ -3,11 +3,11 @@
 import numpy as np
 import os
 from pathlib import Path
-import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from typing import Any, List, Tuple
 from tabulate import tabulate
 import shutil
+import torch
 
 from mytypes import Array, Array2D
 
@@ -101,3 +101,12 @@ def copy_folder(src, dst):
         print(f"Error: Source '{src}' not found.")
     except Exception as e:
         print(f"An error occurred: {e}")
+    
+def load_model(path: Path) -> None:
+    """Load the model parameters
+    
+    parameters:
+    -----------
+    params_path: path to the pre-trained parameters
+    """
+    return torch.load(path)

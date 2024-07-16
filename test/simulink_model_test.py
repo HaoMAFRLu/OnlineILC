@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 from params import Beam_SIM_PARAMS
-from environmnet import Beam
+from environmnet import BEAM
 
 
 def get_random_input(T: int, dt: float, 
@@ -24,7 +24,7 @@ def run_simulink_model():
         SimulationMode='normal'
     )
     model_name = 'Control_System'
-    beam = Beam(model_name, SIM_PARAMS)
+    beam = BEAM(model_name, SIM_PARAMS)
     beam.initialization()
     u_in = get_random_input(1, 0.01)
     beam.set_input('dt', 0.01)

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import mytypes
 
-class Beam:
+class BEAM():
     """The beam simulation, implemented in simulink
     
     parameters:
@@ -21,9 +21,9 @@ class Beam:
         |--Solver: the solver of the simulation
         |--SimulationMode: the mode of the simulation
     """
-    def __init__(self, model_name: str, SIM_PARAMS: dataclass) -> None:
+    def __init__(self, model_name: str, PARAMS: dict) -> None:
         self.model_name = model_name
-        self.SIM_PARAMS = SIM_PARAMS
+        self.PARAMS = PARAMS
         self.root = os.path.dirname(os.path.abspath(__file__))
         self.path = os.path.join(self.root, 'model')
         self.model_path = self.get_model_path(self.model_name)
@@ -70,6 +70,10 @@ class Beam:
 
     def initialization(self):
         """Initialize the simulation environment
+        1. start the Matlab engine
+        2. search for the model components
+        3. load the simulation model
+        4. set the simulation parameters
         """
         self.start_engine()
         self.add_path(self.path)

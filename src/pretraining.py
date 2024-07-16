@@ -132,7 +132,6 @@ class PreTrain():
 
         avg_loss = total_loss/len(idx)
         return avg_loss
-    
 
     def learn(self, num_epochs: int=100) -> None:
         """Call the training process
