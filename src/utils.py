@@ -110,3 +110,4 @@ def load_model(path: Path) -> None:
     params_path: path to the pre-trained parameters
     """
     return torch.load(path)
+

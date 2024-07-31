@@ -463,6 +463,10 @@ class DataProcess():
         parameters:
         -----------
         root: path to the src folder
+
+        returns:
+        --------
+        norm_params: parameters used for normalizetion
         """
         path = os.path.join(root, 'data', 'pretraining', 'src')
         with open(path, 'rb') as file:
