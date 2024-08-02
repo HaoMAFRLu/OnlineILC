@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import mytypes
+import utils as fcs
 
 class BEAM():
     """The beam simulation, implemented in simulink
@@ -22,25 +23,30 @@ class BEAM():
         |--SimulationMode: the mode of the simulation
     """
     def __init__(self, model_name: str, PARAMS: dict) -> None:
+        self.dt = 0.01
+
         self.model_name = model_name
         self.PARAMS = PARAMS
-        self.root = os.path.dirname(os.path.abspath(__file__))
+        self.root = fcs.get_parent_path(lvl=0)
         self.path = os.path.join(self.root, 'model')
         self.model_path = self.get_model_path(self.model_name)
+        
+        self.set_input('dt', self.dt)
+        self.t_stamp = np.array(range(550))*self.dt
 
     def start_engine(self) -> None:
         """Start the simulink engine
         """
         self.ENGINE = matlab.engine.start_matlab()
     
-    def set_parameters(self, SIM_PARAMS: dataclass) -> None:
+    def set_parameters(self, SIM_PARAMS: dict) -> None:
         """Set the parameters of the simulation
 
         parameters:
         -----------
         SIM_PARAMS: the simulation parameters
         """
-        for key, value in SIM_PARAMS.__dict__.items():
+        for key, value in SIM_PARAMS.items():
             self.ENGINE.set_param(self.model_name, key, value, nargout=0)
     
     def get_model_path(self, model_name: str) -> Path:
@@ -78,7 +84,7 @@ class BEAM():
         self.start_engine()
         self.add_path(self.path)
         self.load_system(self.model_path)
-        self.set_parameters(self.SIM_PARAMS)
+        self.set_parameters(self.PARAMS)
     
     def run_sim(self) -> None:
         """Run the simulation, after specified the inputs
@@ -133,5 +139,13 @@ class BEAM():
         """
         if isinstance(value, np.ndarray):
             value = self.nparray_2_matlab(value)
+
         self.ENGINE.workspace[name] = value
 
+    def one_step(self, u: np.ndarray) -> np.ndarray:
+        """Do one step simulation
+        """
+        u_in = np.stack((self.t_stamp, u.reshape(-1, 1)), axis=1)
+        self.set_input('u_in', u_in)
+        self.run_sim()
+        return self.get_output()                

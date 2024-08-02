@@ -7,7 +7,7 @@ import os
 import json
 
 @dataclass
-class Beam_SIM_PARAMS:
+class SIM_PARAMS:
     """The dataclass for the beam simulation
     """
     StopTime: str
@@ -33,6 +33,21 @@ class OFFLINE_DATA_PARAMS:
     channel: int
     height: int
     width: int
+
+# @dataclass
+# class ONLINE_DATA_PARAMS:
+#     """The hyperparameters for generating online data processor
+#     """
+#     data_format: str
+#     is_normalization: bool
+#     is_centerization: bool
+#     input_scale: float
+#     output_scale: float
+#     input_name: str
+#     output_name: str
+#     channel: int
+#     height: int
+#     width: int
 
 @dataclass
 class NN_PARAMS:
@@ -60,15 +75,18 @@ class VISUAL_PARAMS:
     data: str
 
 dataclass_map = {
-    "Beam_SIM_PARAMS":     Beam_SIM_PARAMS,
+    "SIM_PARAMS":          SIM_PARAMS,
     "OFFLINE_DATA_PARAMS": OFFLINE_DATA_PARAMS,
     "NN_PARAMS":           NN_PARAMS,
     "VISUAL_PARAMS":       VISUAL_PARAMS
 }
 
 class PARAMS_GENERATOR():
-    """Generator parameters according to 
-    the config file
+    """Generator parameters according to the config file
+
+    parameters:
+    -----------
+    PATH_CONFIG: path to the config
     """
     def __init__(self, PATH_CONFIG: Path=None) -> None:
         self.root = fcs.get_parent_path()

@@ -17,11 +17,10 @@ from trajectory import TRAJ
 class OnlineLearning():
     """Classes for online learning
     """
-    def __init__(self, path: Path) -> None:
+    def __init__(self) -> None:
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.root = fcs.get_parent_path(lvl=0)
         self.initialization()
-
 
     def build_model(self) -> torch.nn:
         """Build a new model, if want to learn from scratch
@@ -41,17 +40,22 @@ class OnlineLearning():
         importlib.reload(params)
 
     @staticmethod
-    def get_params() -> Tuple[dict]:
+    def get_params(path: Path) -> Tuple[dict]:
         """Return the hyperparameters for each module
+
+        parameters:
+        -----------
+        path: path to folder of the config file
         """
+        PATH_CONFIG = os.path.join(path, 'config.json')
         PARAMS_LIST = ["SIM_PARAMS", 
-                       "ONLINE_DATA_PARAMS", 
-                       "NN_PARAMS",
-                       "TRAJ_PARAMS"]
-        params_generator = params.PARAMS_GENERATOR()
+                       "OFFLINE_DATA_PARAMS", 
+                       "NN_PARAMS"]
+        
+        params_generator = params.PARAMS_GENERATOR(PATH_CONFIG)
         params_generator.get_params(PARAMS_LIST)
         return (params_generator.PARAMS['SIM_PARAMS'],
-                params_generator.PARAMS['ONLINE_DATA_PARAMS'],
+                params_generator.PARAMS['OFFLINE_DATA_PARAMS'],
                 params_generator.PARAMS['NN_PARAMS'])
 
     def env_initialization(self, PARAMS: dict) -> environmnet:
@@ -60,13 +64,14 @@ class OnlineLearning():
         self.env = environmnet.BEAM('Control_System', PARAMS)
         self.env.initialization()
 
-    def data_process_initialization(self, path: Path, 
-                                    PARAMS: dict) -> None:
-        """
+    def data_process_initialization(self, PARAMS: dict) -> None:
+        """Initialize the data processor
+
+        parameters:
+        -----------
+        PARAMS: hyperparameters
         """
         self.DATA_PROCESS = data_process.DataProcess('online', PARAMS)
-        data = self.DATA_PROCESS.get_data(root=path, raw_inputs=None)
-        print('here')
     
     def NN_initialization(self, path: Path, PARAMS: dict) -> None:
         """Build the model and load the pretrained weights
@@ -81,40 +86,44 @@ class OnlineLearning():
         """
         self.traj = TRAJ()
 
-    def initialization(self, path: Path) -> torch.nn:
+    def initialization(self) -> torch.nn:
         """Initialize everything:
-        0. reload the module from another src path, and load the weights
+        (0. reload the module from another src path, and load the weights)
         1. generate parameters for each module
+            |-- SIM_PARAMS: parameters for initializing the simulation
+            |-- DATA_PARAMS: parameters for initializing the online data processor
+            |-- NN_PARAMS: parameters for initializing the neural network
         2. load and initialize the simulation environment
         3. load and initialize the data process
         4. build and load the pretrained neural network
-        parameters:
-        -----------
-        path: path to the src folder
         """
-        if path is None:
-            checkpoint = None
-        else:
-            self.reload_module(path)
-            checkpoint = fcs.load_model(path)
-
-        SIM_PARAMS, DATA_PARAMS, NN_PARAMS, OL_PARAMS = self.get_params()
+        SIM_PARAMS, DATA_PARAMS, NN_PARAMS = self.get_params(self.root)
         self.traj_initialization()
         self.env_initialization(SIM_PARAMS)
-        self.data_process_initialization(path, DATA_PARAMS)
+        self.data_process_initialization(DATA_PARAMS)
+        
+        path = os.path.join(self.root, 'data', 'pretrain_model', 'model.pth')
         self.NN_initialization(path, NN_PARAMS)
     
-    def online_learning(self, PARAMS: dict) -> None:
+    def online_learning(self, nr_iterations: int=100) -> None:
         """Online learning.
+        1. sample a reference trajectory randomly
+        2. do the inference using the neural network -> u
+        3. execute the simulation and observe the loss
+        4. update the last layer using kalman filter
         """
         # sample a reference trajectory
-        for i in range(PARAMS["nr_iterations"]):
+        for i in range(nr_iterations):
             # sample a reference trajectory
-            yref = self.traj.get_traj()
-            y_processed = self.DATA_PROCESS.get_data(yref)
+            yref, t_stamp = self.traj.get_traj()
+            y_processed = self.DATA_PROCESS.get_data(raw_inputs=yref[0, 1:])
             self.model.NN.eval()
-            u = self.model.NN(y_processed)
-            yout = self.env(u)
-            self.kalman_filter(self.model.NN, yref, yout)
+            d_tensor = self.model.NN(y_processed.float())
+            d = d_tensor.squeeze().to('cpu').detach().numpy()
+            
+            yout = self.env(d)
+            # self.extract_last_layer()
+            # self.kalman_filter(self.model.NN, yref, yout)
+            # self.change_last_layer()
 
 

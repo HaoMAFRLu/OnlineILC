@@ -1,5 +1,9 @@
 {
-    "StipTime": "5.0",
+    "StopTime": "5.0",
+    "StartTime": "0.0",
+    "AbsTol": "1e-7",
+    "Solver": "ode23t",
+    "SimulationMode": "normal",
     "data_format": "seq2seq",
     "is_normalization": false,
     "is_centerization": false,

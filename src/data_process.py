@@ -257,7 +257,10 @@ class DataSeq():
         -------
         tensor_list: a list of tensors, which are in the shape of 1 x channel x height x width
         """
-        tensor_list = [torch.tensor(arr, device=self.device).view(1, self.channel, self.height, self.width) for arr in data]
+        if isinstance(data, list):
+            tensor_list = [torch.tensor(arr, device=self.device).view(1, self.channel, self.height, self.width) for arr in data]
+        elif isinstance(data, np.ndarray):
+            tensor_list = torch.tensor(data, device=self.device).view(1, self.channel, self.height, self.width)
         return tensor_list
 
     def split_data(self, data: List[torch.tensor], idx: list):
@@ -292,7 +295,14 @@ class DataProcess():
         self.mode = mode
         self.data_format = PARAMS['data_format']
         
-        self.norm_params = None
+        if self.mode == 'online':
+            path_norm_params = os.path.join(self.root, 'data', 'pretrain_model', 'norm_params')
+            with open(path_norm_params, 'rb') as file:
+                _data = pickle.load(file)
+                self.norm_params = _data["norm_params"]
+        else:
+            self.norm_params = None
+
         self.SPLIT_IDX = None
 
         self.PARAMS = PARAMS
@@ -449,10 +459,11 @@ class DataProcess():
             
         elif self.mode == 'online':
             preprocess_inputs = self._DATA_PROCESS.preprocess_data(kwargs['raw_inputs'], target='input')
-            if self.norm_params is None:
-                self.norm_params = self.load_norm_params(kwargs['root'])
-            data, norm_params = self._DATA_PROCESS.generate_data('online', inputs=preprocess_inputs,
+            # if self.norm_params is None:
+            #     self.norm_params = self.load_norm_params(kwargs['root'])
+            data = self._DATA_PROCESS.generate_data('online', inputs=preprocess_inputs,
                                                                  norm_params=self.norm_params)
+            return data
         
         else:
             raise ValueError(f'The specified data mode does not exist!')
