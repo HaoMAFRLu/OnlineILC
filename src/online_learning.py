@@ -233,6 +233,8 @@ class OnlineLearning():
         self.model.NN.eval()
         
         for i in range(nr_iterations):
+            tt = time.time()
+
             # sample a reference trajectory
             yref, _ = self.traj.get_traj()
             y_processed = self.DATA_PROCESS.get_data(raw_inputs=yref[0, 1:])
@@ -258,9 +260,11 @@ class OnlineLearning():
             self.assign_last_layer(self.model.NN, vec_)
             t2 = time.time()
 
+            ttotal = time.time() - tt
             fcs.print_info(
                 Epoch=[str(i+1)+'/'+str(nr_iterations)],
                 Loss=[loss],
+                Ttotal = [ttotal],
                 Tsim = [tsim],
                 Tk=[tk],
                 Td=[td],

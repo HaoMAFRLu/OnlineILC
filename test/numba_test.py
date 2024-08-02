@@ -3,11 +3,11 @@ import numba as nb
 # 多次调用进行测量
 import time
 
-# @nb.jit(nopython=True)
+@nb.jit(nopython=True)
 def dot_product(A, B):
     return np.dot(A, B)
 
-# @nb.jit(nopython=True)
+@nb.jit(nopython=True)
 def update_P(I, K, A, P, R):
     KA = dot_product(K, A)
     I_KA = I - KA
@@ -16,7 +16,7 @@ def update_P(I, K, A, P, R):
     return result
 
 # 定义矩阵维度
-dim = 6050
+dim = 9000
 
 # 创建随机矩阵
 I = np.eye(dim, dtype=np.float32)
