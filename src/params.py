@@ -74,11 +74,22 @@ class VISUAL_PARAMS:
     checkpoint: str
     data: str
 
+@dataclass
+class KF_PARAMS:
+    """The hyperparameters for the kalman filter
+    """
+    sigma_w: float
+    sigma_ini: float
+    sigma_y: float
+    sigma_d: float
+    dim: int
+
 dataclass_map = {
     "SIM_PARAMS":          SIM_PARAMS,
     "OFFLINE_DATA_PARAMS": OFFLINE_DATA_PARAMS,
     "NN_PARAMS":           NN_PARAMS,
-    "VISUAL_PARAMS":       VISUAL_PARAMS
+    "VISUAL_PARAMS":       VISUAL_PARAMS,
+    "KF_PARAMS":           KF_PARAMS
 }
 
 class PARAMS_GENERATOR():

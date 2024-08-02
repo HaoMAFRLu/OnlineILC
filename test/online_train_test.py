@@ -1,5 +1,5 @@
 """Test for online training
-model id: 20240716_193445
+model id: 20240802_141501
 """
 import os, sys
 import torch
@@ -13,7 +13,7 @@ from online_learning import OnlineLearning
 
 def test():
     online_learning = OnlineLearning()
-    online_learning.online_learning(10)
+    online_learning.online_learning(500)
 
 if __name__ == '__main__':
     test()

@@ -111,3 +111,18 @@ def load_model(path: Path) -> None:
     """
     return torch.load(path)
 
+def get_flatten(y: Array2D) -> Array:
+    """Flatten an array by columns
+    """
+    dim = len(y.shape)
+    if dim == 2:
+        return y.flatten(order='F')
+    elif dim == 3:
+        num_envs, _, _ = y.shape
+        return y.transpose(0, 2, 1).reshape(num_envs, -1)
+    
+def get_unflatten(u: Array, channels: int) -> Array2D:
+    """Unflatten the array
+    """
+    return u.reshape((channels, -1), order='F')
+
