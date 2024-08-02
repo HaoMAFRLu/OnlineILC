@@ -30,8 +30,7 @@ class BEAM():
         self.root = fcs.get_parent_path(lvl=0)
         self.path = os.path.join(self.root, 'model')
         self.model_path = self.get_model_path(self.model_name)
-        
-        self.set_input('dt', self.dt)
+    
         self.t_stamp = np.array(range(550))*self.dt
 
     def start_engine(self) -> None:
@@ -85,6 +84,7 @@ class BEAM():
         self.add_path(self.path)
         self.load_system(self.model_path)
         self.set_parameters(self.PARAMS)
+        self.set_input('dt', self.dt)
     
     def run_sim(self) -> None:
         """Run the simulation, after specified the inputs
@@ -112,14 +112,14 @@ class BEAM():
         theta: the relative anlges in each joint
         """
         _y = self._get_output(self.simout, 'y')
-        y = self.matlab_2_nparray(self._get_output(_y, 'Data'))
+        y = self.matlab_2_nparray(self._get_output(_y, 'Data'))[1:]
 
         _theta = self._get_output(self.simout, 'theta')
         l = len(_theta)
         theta = [None] * l
         for i in range(l):
             name = 'signal' + str(i+1)
-            theta[i] = self.matlab_2_nparray(self._get_output(_theta[name], 'Data'))
+            theta[i] = self.matlab_2_nparray(self._get_output(_theta[name], 'Data'))[1:]
         return y, theta
     
     @staticmethod
@@ -145,7 +145,7 @@ class BEAM():
     def one_step(self, u: np.ndarray) -> np.ndarray:
         """Do one step simulation
         """
-        u_in = np.stack((self.t_stamp, u.reshape(-1, 1)), axis=1)
+        u_in = np.stack((self.t_stamp, u), axis=1)
         self.set_input('u_in', u_in)
         self.run_sim()
         return self.get_output()                
