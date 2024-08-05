@@ -126,3 +126,7 @@ def get_unflatten(u: Array, channels: int) -> Array2D:
     """
     return u.reshape((channels, -1), order='F')
 
+def add_one(a: Array) -> Array:
+    """add element one
+    """
+    return np.hstack((a.flatten(), 1))

@@ -10,10 +10,12 @@ from mytypes import Array, Array2D
 class KalmanFilter():
     """
     """
-    def __init__(self, B: Array2D, Bd: Array2D, 
+    def __init__(self, mode: str,
+                 B: Array2D, Bd: Array2D, 
                  PARAMS: dict) -> None:
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        
+        self.mode = mode
+
         self.sigma_w = PARAMS["sigma_w"]
         self.sigma_d = PARAMS["sigma_d"]
         self.sigma_y = PARAMS["sigma_y"]
@@ -30,10 +32,16 @@ class KalmanFilter():
     def initialization(self) -> None:
         """Initialize the kalman filter
         """
-        self.I = np.eye(self.q)
+        
+        if self.mode is None:
+            self.I = np.eye(self.q)
+        elif self.mode == 'svd':
+            self.I = np.eye(self.dim)
+            self.Z = np.zeros((550-self.dim, self.dim))
+        
+        self.R_ = np.eye(550) * self.sigma_y
         self.Q = self.I * self.sigma_d
         self.P = self.I * self.sigma_ini
-        self.R_ = np.eye(550) * self.sigma_y
 
     def import_d(self, d: Array2D) -> None:
         """Import the initial value of the disturbance
@@ -49,6 +57,12 @@ class KalmanFilter():
         """
         return np.hstack([phi.flatten(), 1])
 
+    @staticmethod
+    def get_v(VT: Array2D, phi: Array) -> Array:
+        """Return v
+        """
+        return VT@phi.reshape(-1, 1)
+        
     def get_A(self, phi: Array) -> None:
         """Get the dynamic matrix A
         
@@ -57,8 +71,17 @@ class KalmanFilter():
         phi: the output of the last second layer
         """
         phi_bar = self.add_one(phi)
-        self.A = np.kron(phi_bar, self.Bd)
-
+        if self.mode is None:            
+            self.A = np.kron(phi_bar, self.Bd)
+        elif self.mode == 'svd':
+            v = self.get_v(self.VT, phi_bar)
+            self.A = self.Bd_bar@np.vstack((np.diag(v.flatten()), self.Z))   
+    
+    def get_Bd_bar(self, Bd: Array2D, U: Array2D) -> None:
+        """Return Bd_bar
+        """
+        self.Bd_bar = Bd@U
+    
     @staticmethod
     # @nb.jit(nopython=True)
     def get_difference(yout, B, u):

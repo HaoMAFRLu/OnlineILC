@@ -23,9 +23,9 @@
     "weight_decay": 1e-4,
     "filter_size": 7,
     "output_dim": 550,
-    "sigma_y": 1e-4,
-    "sigma_d": 1e-4,
-    "sigma_ini": 1e-4,
-    "sigma_w": 1e-4,
-    "dim": 17
+    "sigma_y": 1e-5,
+    "sigma_d": 1e-3,
+    "sigma_ini": 1e-2,
+    "sigma_w": 0.0,
+    "dim": 65
 }
