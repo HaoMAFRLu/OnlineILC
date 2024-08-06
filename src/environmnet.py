@@ -81,6 +81,7 @@ class BEAM():
         4. set the simulation parameters
         """
         self.start_engine()
+        self.ENGINE.eval("gpu_enabled = parallel.gpu.GPUDevice.isAvailable;", nargout=0)
         self.add_path(self.path)
         self.load_system(self.model_path)
         self.set_parameters(self.PARAMS)

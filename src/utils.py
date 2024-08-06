@@ -130,3 +130,20 @@ def add_one(a: Array) -> Array:
     """add element one
     """
     return np.hstack((a.flatten(), 1))
+
+def adjust_matrix(matrix: Array2D, new_matrix: Array2D, 
+                  max_rows: int) -> Array2D:
+    """Vertically concatenate matrices, and if 
+    the resulting number of rows exceeds the given 
+    limit, remove rows from the top of the matrix.
+    """
+    if matrix is None:
+        return new_matrix.copy()
+    else:
+        original_rows = matrix.shape[0]
+        combined_matrix = np.vstack((matrix, new_matrix))
+
+        if original_rows >= max_rows:
+            combined_matrix = combined_matrix[-max_rows:, :]
+    
+        return combined_matrix

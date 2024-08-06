@@ -3,7 +3,7 @@
     "StartTime": "0.0",
     "AbsTol": "1e-7",
     "Solver": "ode23t",
-    "SimulationMode": "normal",
+    "SimulationMode": "accelerator",
     "data_format": "seq2seq",
     "is_normalization": false,
     "is_centerization": false,
@@ -23,9 +23,9 @@
     "weight_decay": 1e-4,
     "filter_size": 7,
     "output_dim": 550,
-    "sigma_y": 1e-5,
-    "sigma_d": 1e-3,
-    "sigma_ini": 1e-2,
-    "sigma_w": 0.0,
-    "dim": 65
+    "sigma_y": 1e-3,
+    "sigma_d": 1e-7,
+    "sigma_ini": 1e-7,
+    "sigma_w": 1e-3,
+    "dim": 551
 }

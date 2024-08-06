@@ -28,13 +28,15 @@ class OnlineLearning():
     """Classes for online learning
     """
     def __init__(self, mode: str=None, 
-                 nr_interval: int=100,
-                 nr_data_interval: int=1) -> None:
+                 nr_interval: int=500,
+                 nr_data_interval: int=1,
+                 nr_marker_interval: int=20) -> None:
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.root = fcs.get_parent_path(lvl=0)
         
         self.nr_interval = nr_interval
         self.nr_data_interval = nr_data_interval
+        self.nr_marker_interval = nr_marker_interval
         self.mode = mode
         
         parent = fcs.get_parent_path(lvl=1)
@@ -165,7 +167,7 @@ class OnlineLearning():
     def get_u(self, y: np.ndarray, d: np.ndarray) -> np.ndarray:
         """Get the input u based on the disturbance
         """
-        return np.linalg.inv(self.B)@(y-self.Bd@d)
+        return np.linalg.pinv(self.B)@(y-self.Bd@d)
 
     @staticmethod
     def get_loss(y1: np.ndarray, y2: np.ndarray) -> float:
@@ -269,10 +271,31 @@ class OnlineLearning():
         """
         l = U.shape[0]
         r = VT.shape[0]
-        I = np.zeros((l-r, r))
-        K = np.vstack((np.diag(S.flatten()), I))
+        if l>r:
+            I = np.zeros((l-r, r))
+            K = np.vstack((np.diag(S.flatten()), I))
+        elif l<r:
+            I = np.zeros((l, r-l))
+            K = np.hstack((np.diag(S.flatten()), I))
         return U@K@VT
     
+    def _get_d(self, yref: Array) -> Array:
+        """
+        """
+        y_processed = self.DATA_PROCESS.get_data(raw_inputs=yref[0, 1:])
+        d_tensor = self.model.NN(y_processed.float())
+        d = self.tensor2np(d_tensor)
+        return self.DATA_PROCESS.inverse_output(d)
+
+    def _rum_sim(self, yref: Array2D) -> Tuple:
+        """
+        """
+        d = self._get_d(yref)
+        u = self.get_u(yref[0, 1:].reshape(-1 ,1), d.reshape(-1, 1))
+        yout, _ = self.env.one_step(u.flatten())
+        loss = self.get_loss(yout.flatten(), yref[0, 1:].flatten())
+        return yout, d, u, loss
+
     def online_learning(self, nr_iterations: int=100) -> None:
         """
         """
@@ -280,6 +303,8 @@ class OnlineLearning():
             self._online_learning(nr_iterations)
         elif self.mode == 'svd':
             self._online_learning_svd(nr_iterations)
+        elif self.mode == 'ada-svd':
+            self._online_learning_ada_svd(nr_iterations)
 
     def _online_learning(self, nr_iterations: int=100) -> None:
         """Online learning.
@@ -294,18 +319,10 @@ class OnlineLearning():
             tt = time.time()
 
             yref, _ = self.traj.get_traj()
-            y_processed = self.DATA_PROCESS.get_data(raw_inputs=yref[0, 1:])
-
-            d_tensor = self.model.NN(y_processed.float())
-            d = self.tensor2np(d_tensor)
-            d = self.DATA_PROCESS.inverse_output(d)
-
-            u = self.get_u(yref[0, 1:].reshape(-1 ,1), d.reshape(-1, 1))
             t1 = time.time()
-            yout, _ = self.env.one_step(u.flatten())
-            tsim = time.time() - t1
-            
-            loss = self.get_loss(yout.flatten(), yref[0, 1:].flatten())
+            yout, d, u, loss = self._rum_sim(yref)
+            tsim = time.tim() - t1
+
             phi, vec = self.extract_NN_info(self.model.NN)
 
             if self.kalman_filter.d is None:
@@ -331,33 +348,117 @@ class OnlineLearning():
             if (i+1) % self.nr_interval == 0:
                 self.save_checkpoint(i+1)
 
-    def _online_learning_svd(self, nr_iterations: int=100) -> None:
+    def kf_initialization(self, NN: torch.nn) -> None:
+        """Initialize the kalman filter
         """
-        """
-        self.model.NN.eval()
-        w, b = self.extract_last_layer(self.model.NN)
+        w, b = self.extract_last_layer(NN)
         G = np.hstack((w, b.reshape(-1, 1)))
         U, S, VT = self.get_svd(G)
         self.kalman_filter.get_Bd_bar(self.Bd, U)
         self.kalman_filter.VT = VT
+        return U, S, VT
 
-        yref, _ = self.traj.get_traj()
-        y_processed = self.DATA_PROCESS.get_data(raw_inputs=yref[0, 1:])
+    def _online_learning_ada_svd(self, nr_iterations: int=100,
+                                 nr_ada: int=5) -> None:
+        """
+        """
+        self.model.NN.eval()
+        U, S, VT = self.kf_initialization(self.model.NN)
+        yref_marker, _ = self.traj.get_traj()
+        nr_marker = 0
+        loss_marker = []
+        yout_ada = None
+        Bu_ada = None
+        total_loss = 0
 
         for i in range(nr_iterations):
+            if i%self.nr_marker_interval == 0:
+                nr_marker += 1
+                _, _, _, loss = self._rum_sim(yref_marker)
+                loss_marker.append(np.round(loss, 4))
+                fcs.print_info(
+                Marker=[str(nr_marker)],
+                Loss=[loss_marker])
+            
             tt = time.time()
 
-            
-            d_tensor = self.model.NN(y_processed.float())
-            d = self.tensor2np(d_tensor)
-            d = self.DATA_PROCESS.inverse_output(d)
-
-            u = self.get_u(yref[0, 1:].reshape(-1 ,1), d.reshape(-1, 1))
+            yref, _ = self.traj.get_traj()
             t1 = time.time()
-            yout, _ = self.env.one_step(u.flatten())
+            yout, d, u, loss = self._rum_sim(yref)
             tsim = time.time() - t1
+            phi = self.extract_output(self.model.NN)  # get the output of the last second layer
+            
+            if self.kalman_filter.d is None:
+                self.kalman_filter.import_d(S.reshape(-1, 1))
 
-            loss = self.get_loss(yout.flatten(), yref[0, 1:].flatten())
+            yout_ada = fcs.adjust_matrix(yout_ada, yout.reshape(-1, 1), nr_ada*550)
+            Bu_ada = fcs.adjust_matrix(Bu_ada, self.B@u.reshape(-1, 1), nr_ada*550)
+
+            t1 = time.time()
+            self.kalman_filter.get_A(phi, max_rows=nr_ada*550)
+            S, tk, td, tp = self.kalman_filter.estimate(yout_ada, Bu_ada)      
+            
+            G = self.svd_inference(U, S, VT)
+            vec = fcs.get_flatten(G)
+            self.assign_last_layer(self.model.NN, vec)
+            t2 = time.time()
+
+            ttotal = time.time() - tt
+
+            total_loss += loss
+            fcs.print_info(
+                Epoch=[str(i+1)+'/'+str(nr_iterations)],
+                Loss=[loss],
+                AvgLoss=[total_loss/(i+1)],
+                Ttotal = [ttotal],
+                Tsim = [tsim],
+                Tk=[tk],
+                Td=[td],
+                Tp=[tp]
+            )
+
+            if (i+1) % self.nr_data_interval == 0:
+                self.save_data(i, 
+                               hidden_states=S,
+                               u=u,
+                               yref=yref,
+                               d=d,
+                               yout=yout,
+                               loss=loss)
+            if (i+1) % self.nr_interval == 0:
+                self.save_checkpoint(i+1)
+
+        path_file = os.path.join(self.path_model, 'loss_marker')
+        with open(path_file, 'wb') as file:
+            pickle.dump(yref_marker, file)
+            pickle.dump(loss_marker, file)
+
+
+    def _online_learning_svd(self, nr_iterations: int=100) -> None:
+        """
+        """
+        self.model.NN.eval()
+        U, S, VT = self.kf_initialization(self.model.NN)
+
+        yref_marker, _ = self.traj.get_traj()
+        nr_marker = 0
+        loss_marker = []
+
+        for i in range(nr_iterations):
+            if i%self.nr_marker_interval == 0:
+                nr_marker += 1
+                _, _, _, loss = self._rum_sim(yref_marker)
+                loss_marker.append(np.round(loss, 4))
+                fcs.print_info(
+                Marker=[str(nr_marker)],
+                Loss=[loss_marker])
+
+            tt = time.time()
+
+            yref, _ = self.traj.get_traj()
+            t1 = time.time()
+            yout, d, u, loss = self._rum_sim(yref)
+            tsim = time.time() - t1
 
             phi = self.extract_output(self.model.NN)  # get the output of the last second layer
             
@@ -386,6 +487,7 @@ class OnlineLearning():
 
             if (i+1) % self.nr_data_interval == 0:
                 self.save_data(i, 
+                               hidden_states=S,
                                u=u,
                                yref=yref,
                                d=d,
@@ -393,3 +495,8 @@ class OnlineLearning():
                                loss=loss)
             if (i+1) % self.nr_interval == 0:
                 self.save_checkpoint(i+1)
+
+        path_file = os.path.join(self.path_model, 'loss_marker')
+        with open(path_file, 'wb') as file:
+            pickle.dump(yref_marker, file)
+            pickle.dump(loss_marker, file)

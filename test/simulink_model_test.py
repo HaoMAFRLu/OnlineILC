@@ -21,6 +21,7 @@ def run_simulink_model():
     PARAMS_LIST = ["SIM_PARAMS"]     
     params_generator = PARAMS_GENERATOR()
     params_generator.get_params(PARAMS_LIST)
+    # params_generator.PARAMS['SIM_PARAMS']["SimulationMode"] = "accelerator"
 
     model_name = 'Control_System'
     beam = BEAM(model_name, params_generator.PARAMS['SIM_PARAMS'])

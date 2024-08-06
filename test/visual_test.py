@@ -21,14 +21,13 @@ torch.manual_seed(10086)
 def test():
     root = "/home/hao/Desktop/MPI/Online_Convex_Optimization/OnlineILC/data"
     folder = "offline_training"
-    file = "20240802_141501"
+    file = "20240805_132954"
     path = os.path.join(root, folder, file, 'src')
     sys.path.insert(0, path)
     importlib.reload(params)
     importlib.reload(networks)
     importlib.reload(data_process)
     
-
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     PARAMS_LIST = ["OFFLINE_DATA_PARAMS",
                    "NN_PARAMS"]
@@ -46,7 +45,7 @@ def test():
         is_save=True,
         paths=[folder, file],
         checkpoint="checkpoint_epoch_5000",
-        data='train'
+        data='eval'
     )
     VISUAL = Visual(asdict(VIS_PARAMS))
 

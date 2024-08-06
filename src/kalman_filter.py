@@ -6,7 +6,7 @@ import time
 import torch
 
 from mytypes import Array, Array2D
-
+import utils as fcs
 class KalmanFilter():
     """
     """
@@ -32,16 +32,32 @@ class KalmanFilter():
     def initialization(self) -> None:
         """Initialize the kalman filter
         """
-        
         if self.mode is None:
             self.I = np.eye(self.q)
         elif self.mode == 'svd':
-            self.I = np.eye(self.dim)
-            self.Z = np.zeros((550-self.dim, self.dim))
-        
+            self.I = np.eye(min(550, self.dim))
+            if self.dim < 550:
+                self.Z = np.zeros((550-self.dim, self.dim))
+                self.dir = 'v'
+            elif self.dim > 550:
+                self.dir = 'h'
+        elif self.mode == 'ada-svd':
+            self.A = None
+            self.I = np.eye(min(550, self.dim))
+            if self.dim < 550:
+                self.Z = np.zeros((550-self.dim, self.dim))
+                self.dir = 'v'
+            elif self.dim > 550:
+                self.dir = 'h'
+
         self.R_ = np.eye(550) * self.sigma_y
         self.Q = self.I * self.sigma_d
         self.P = self.I * self.sigma_ini
+
+    def update_covariance(self, dim: int) -> None:
+        """Update the covariance matrices
+        """
+        self.R_ = np.eye(dim)*self.sigma_y
 
     def import_d(self, d: Array2D) -> None:
         """Import the initial value of the disturbance
@@ -63,7 +79,7 @@ class KalmanFilter():
         """
         return VT@phi.reshape(-1, 1)
         
-    def get_A(self, phi: Array) -> None:
+    def get_A(self, phi: Array, **kwargs) -> None:
         """Get the dynamic matrix A
         
         parameters:
@@ -75,8 +91,19 @@ class KalmanFilter():
             self.A = np.kron(phi_bar, self.Bd)
         elif self.mode == 'svd':
             v = self.get_v(self.VT, phi_bar)
-            self.A = self.Bd_bar@np.vstack((np.diag(v.flatten()), self.Z))   
-    
+            if self.dir == 'v':
+                self.A = self.Bd_bar@np.vstack((np.diag(v.flatten()), self.Z))/1000.0
+            elif self.dir == 'h':
+                self.A = self.Bd_bar@np.diag(v.flatten()[:550])/1000.0
+        elif self.mode == 'ada-svd':
+            v = self.get_v(self.VT, phi_bar)
+            if self.dir == 'v':
+                cur_A = self.Bd_bar@np.vstack((np.diag(v.flatten()), self.Z))/1000.0
+            elif self.dir == 'h':
+                cur_A = self.Bd_bar@np.diag(v.flatten()[:550])/1000.0
+            self.A = fcs.adjust_matrix(self.A, cur_A, kwargs["max_rows"])
+            self.update_covariance(self.A.shape[0])
+
     def get_Bd_bar(self, Bd: Array2D, U: Array2D) -> None:
         """Return Bd_bar
         """
@@ -84,8 +111,8 @@ class KalmanFilter():
     
     @staticmethod
     # @nb.jit(nopython=True)
-    def get_difference(yout, B, u):
-        return yout-B@u
+    def get_difference(yout, Bu):
+        return yout-Bu
 
     @staticmethod
     # @nb.jit(nopython=True)
@@ -141,7 +168,7 @@ class KalmanFilter():
     def get_R(self):
         return (self.A@self.A.T)*self.sigma_w + self.R_
 
-    def estimate(self, yout: Array, u: Array) -> Array:
+    def estimate(self, yout: Array, Bu: Array) -> Array:
         """Estimate the states
         
         parameters:
@@ -174,7 +201,7 @@ class KalmanFilter():
             return result
 
         R = self.get_R()
-        z = self.get_difference(yout, self.B, u)
+        z = self.get_difference(yout, Bu)
         # d_pred = self.prediction(self.I, self.d)
         d_pred = self.d.copy()
         
