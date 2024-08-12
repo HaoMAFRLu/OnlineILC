@@ -21,7 +21,7 @@ torch.manual_seed(10086)
 def test():
     root = "/home/hao/Desktop/MPI/Online_Convex_Optimization/OnlineILC/data"
     folder = "offline_training"
-    file = "20240805_132954"
+    file = "medium_plus"
     path = os.path.join(root, folder, file, 'src')
     sys.path.insert(0, path)
     importlib.reload(params)

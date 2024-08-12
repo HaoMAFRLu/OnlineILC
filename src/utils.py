@@ -147,3 +147,21 @@ def adjust_matrix(matrix: Array2D, new_matrix: Array2D,
             combined_matrix = combined_matrix[-max_rows:, :]
     
         return combined_matrix
+    
+def diagonal_concatenate(A, B, max_size):
+    """
+    """
+    size_A = A.shape[0]
+    size_B = B.shape[0]
+    
+    result_size = size_A + size_B
+    result = np.zeros((result_size, result_size))
+    
+    result[:size_A, :size_A] = A
+    result[size_A:, size_A:] = B
+    
+    if result_size > max_size:
+        result = result[size_B:, size_B:]
+    
+    return result
+

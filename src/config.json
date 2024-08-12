@@ -26,6 +26,6 @@
     "sigma_y": 1e-3,
     "sigma_d": 1e-7,
     "sigma_ini": 1e-7,
-    "sigma_w": 1e-3,
-    "dim": 551
+    "sigma_w": 0.0,
+    "dim": 64
 }

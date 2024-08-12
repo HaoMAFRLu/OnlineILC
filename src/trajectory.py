@@ -1,6 +1,9 @@
 """Classes for reference trajectories
 """
 import numpy as np
+import random
+
+random.seed(9527)
 
 import minimum_jerk.minjerk as mj
 from mytypes import Array, Array2D
@@ -19,7 +22,7 @@ class TRAJ():
         """Randomly choose one value in [start, end] with interval step
         """
         values = np.arange(start, end, step)
-        random_value = np.random.choice(values)
+        random_value = random.choice(values)
         return random_value
 
     def get_t(self) -> Array:

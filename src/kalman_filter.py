@@ -54,10 +54,13 @@ class KalmanFilter():
         self.Q = self.I * self.sigma_d
         self.P = self.I * self.sigma_ini
 
-    def update_covariance(self, dim: int) -> None:
+    def update_covariance(self, dim: int, **kwargs) -> None:
         """Update the covariance matrices
         """
-        self.R_ = np.eye(dim)*self.sigma_y
+        if dim > 550:
+            self.R_ = fcs.diagonal_concatenate(self.R_*1.7, 
+                                               np.eye(550)*self.sigma_y, 
+                                               kwargs["max_rows"])
 
     def import_d(self, d: Array2D) -> None:
         """Import the initial value of the disturbance
@@ -102,7 +105,7 @@ class KalmanFilter():
             elif self.dir == 'h':
                 cur_A = self.Bd_bar@np.diag(v.flatten()[:550])/1000.0
             self.A = fcs.adjust_matrix(self.A, cur_A, kwargs["max_rows"])
-            self.update_covariance(self.A.shape[0])
+            self.update_covariance(self.A.shape[0], max_rows=kwargs["max_rows"])
 
     def get_Bd_bar(self, Bd: Array2D, U: Array2D) -> None:
         """Return Bd_bar

@@ -38,15 +38,21 @@ class OnlineLearning():
         self.nr_data_interval = nr_data_interval
         self.nr_marker_interval = nr_marker_interval
         self.mode = mode
+
+        
         
         parent = fcs.get_parent_path(lvl=1)
         current_time = datetime.now()
         folder_name = current_time.strftime("%Y%m%d_%H%M%S")
         self.path_model = os.path.join(parent, 'data', 'online_training', folder_name)
         self.path_data = os.path.join(self.path_model, 'data')
+
         fcs.mkdir(self.path_model)
         fcs.mkdir(self.path_data)
 
+        parent_dir = fcs.get_parent_path(lvl=1)
+        fcs.copy_folder(os.path.join(parent_dir, 'src'), self.path_model)
+        fcs.copy_folder(os.path.join(parent_dir, 'test'), self.path_model)
         self.initialization()
 
     def build_model(self) -> torch.nn:
@@ -134,6 +140,8 @@ class OnlineLearning():
         
         self.B = _data[0]
         self.Bd = _data[1]
+        self.inv_B = np.linalg.inv(self.B)
+        self.pinv_B = np.linalg.pinv(self.B)
     
     def kalman_filter_initialization(self, mode: str,
                                      PARAMS: dict) -> None:
@@ -167,7 +175,7 @@ class OnlineLearning():
     def get_u(self, y: np.ndarray, d: np.ndarray) -> np.ndarray:
         """Get the input u based on the disturbance
         """
-        return np.linalg.pinv(self.B)@(y-self.Bd@d)
+        return self.inv_B@(y-self.Bd@d)
 
     @staticmethod
     def get_loss(y1: np.ndarray, y2: np.ndarray) -> float:
@@ -364,7 +372,16 @@ class OnlineLearning():
         """
         self.model.NN.eval()
         U, S, VT = self.kf_initialization(self.model.NN)
+
+        S = S*0.0
+        G = self.svd_inference(U, S, VT)
+        vec = fcs.get_flatten(G)
+        self.assign_last_layer(self.model.NN, vec)
+
         yref_marker, _ = self.traj.get_traj()
+        path_marker = os.path.join(self.path_model, 'loss_marker')
+        fcs.mkdir(path_marker)
+
         nr_marker = 0
         loss_marker = []
         yout_ada = None
@@ -374,11 +391,19 @@ class OnlineLearning():
         for i in range(nr_iterations):
             if i%self.nr_marker_interval == 0:
                 nr_marker += 1
-                _, _, _, loss = self._rum_sim(yref_marker)
+                yout, d, u, loss = self._rum_sim(yref_marker)
                 loss_marker.append(np.round(loss, 4))
                 fcs.print_info(
                 Marker=[str(nr_marker)],
-                Loss=[loss_marker])
+                Loss=[loss_marker[-6:]])
+
+                path_marker_file = os.path.join(path_marker, str(nr_marker))
+                with open(path_marker_file, 'wb') as file:
+                    pickle.dump(yref_marker, file)
+                    pickle.dump(yout, file)
+                    pickle.dump(d, file)
+                    pickle.dump(u, file)
+                    pickle.dump(loss, file)
             
             tt = time.time()
 
@@ -428,33 +453,44 @@ class OnlineLearning():
             if (i+1) % self.nr_interval == 0:
                 self.save_checkpoint(i+1)
 
-        path_file = os.path.join(self.path_model, 'loss_marker')
-        with open(path_file, 'wb') as file:
-            pickle.dump(yref_marker, file)
-            pickle.dump(loss_marker, file)
-
-
     def _online_learning_svd(self, nr_iterations: int=100) -> None:
         """
         """
         self.model.NN.eval()
         U, S, VT = self.kf_initialization(self.model.NN)
+        
+        S = S*0.0
+        G = self.svd_inference(U, S, VT)
+        vec = fcs.get_flatten(G)
+        self.assign_last_layer(self.model.NN, vec)
 
         yref_marker, _ = self.traj.get_traj()
+        path_marker = os.path.join(self.path_model, 'loss_marker')
+        fcs.mkdir(path_marker)
+
         nr_marker = 0
         loss_marker = []
 
+        total_loss = 0.0
         for i in range(nr_iterations):
+
             if i%self.nr_marker_interval == 0:
                 nr_marker += 1
-                _, _, _, loss = self._rum_sim(yref_marker)
+                yout, d, u, loss = self._rum_sim(yref_marker)
                 loss_marker.append(np.round(loss, 4))
                 fcs.print_info(
                 Marker=[str(nr_marker)],
-                Loss=[loss_marker])
+                Loss=[loss_marker[-6:]])
+
+                path_marker_file = os.path.join(path_marker, str(nr_marker))
+                with open(path_marker_file, 'wb') as file:
+                    pickle.dump(yref_marker, file)
+                    pickle.dump(yout, file)
+                    pickle.dump(d, file)
+                    pickle.dump(u, file)
+                    pickle.dump(loss, file)
 
             tt = time.time()
-
             yref, _ = self.traj.get_traj()
             t1 = time.time()
             yout, d, u, loss = self._rum_sim(yref)
@@ -467,7 +503,7 @@ class OnlineLearning():
 
             t1 = time.time()
             self.kalman_filter.get_A(phi)
-            S, tk, td, tp = self.kalman_filter.estimate(yout, u)      
+            S, tk, td, tp = self.kalman_filter.estimate(yout, self.B@u.reshape(-1, 1))      
             
             G = self.svd_inference(U, S, VT)
             vec = fcs.get_flatten(G)
@@ -475,9 +511,12 @@ class OnlineLearning():
             t2 = time.time()
 
             ttotal = time.time() - tt
+
+            total_loss += loss
             fcs.print_info(
                 Epoch=[str(i+1)+'/'+str(nr_iterations)],
                 Loss=[loss],
+                AvgLoss=[total_loss/(i+1)],
                 Ttotal = [ttotal],
                 Tsim = [tsim],
                 Tk=[tk],
@@ -496,7 +535,4 @@ class OnlineLearning():
             if (i+1) % self.nr_interval == 0:
                 self.save_checkpoint(i+1)
 
-        path_file = os.path.join(self.path_model, 'loss_marker')
-        with open(path_file, 'wb') as file:
-            pickle.dump(yref_marker, file)
-            pickle.dump(loss_marker, file)
+        
