@@ -1,5 +1,5 @@
 executable = /lustre/home/hma2/projects/OnlineILC/myenv/bin/python
-arguments = -u test/online_train_test.py --sigma-y $(arg1) --sigma-d $(arg2) --sigma-ini $(arg3)
+arguments = -u test/cluster_online_train.py --sigma-y $(arg1) --sigma-d $(arg2) --sigma-ini $(arg3)
 error = jobs/batch$(Process).err
 output = jobs/batch$(Process).out
 log = jobs/batch$(Process).log

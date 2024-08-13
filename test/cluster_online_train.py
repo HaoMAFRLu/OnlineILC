@@ -49,7 +49,10 @@ def test():
     update_config(path, 'sigma_d', args.sigma_d)
     update_config(path, 'sigma_ini', args.sigma_ini)
 
-    online_learning = OnlineLearning()
+    folder_name = str(args.sigma_y)+'_'+str(args.sigma_d)+'_'+str(args.sigma_ini)
+
+    print(folder_name)
+    online_learning = OnlineLearning(folder_name=folder_name)
     online_learning.online_learning(5000, is_scratch=False)
 
 if __name__ == '__main__':

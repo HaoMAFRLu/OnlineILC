@@ -30,7 +30,8 @@ class OnlineLearning():
     def __init__(self, mode: str=None, 
                  nr_interval: int=500,
                  nr_data_interval: int=1,
-                 nr_marker_interval: int=20) -> None:
+                 nr_marker_interval: int=20,
+                 folder_name: str=None) -> None:
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.root = fcs.get_parent_path(lvl=0)
         
@@ -40,8 +41,11 @@ class OnlineLearning():
         self.mode = mode
 
         parent = fcs.get_parent_path(lvl=1)
-        current_time = datetime.now()
-        folder_name = current_time.strftime('%Y%m%d_%H%M%S_%f')
+
+        if folder_name is None:
+            current_time = datetime.now()
+            folder_name = current_time.strftime('%Y%m%d_%H%M%S_%f')
+        
         self.path_model = os.path.join(parent, 'data', 'online_training', folder_name)
         self.path_data = os.path.join(self.path_model, 'data')
 
