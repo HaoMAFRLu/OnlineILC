@@ -1,6 +1,7 @@
 """Test for online training
 model id: 20240813_105549 -> hidden dim = 5 -> tiny
 model id: 20240802_141501 -> hidden dim = 17 -> small
+model id: 20240813_234753 -> hidden dim = 33 -> small_pro
 model id: 20240809_145528 -> hidden dim = 55 -> small_plus
 model id: 20240812_133404 -> hidden dim = 64 -> medium_minus
 model id: 20240716_193445 -> hidden dim = 65 -> medium -> work well

@@ -35,6 +35,6 @@ def move_and_rename_file(source, destination):
         print(f"Error: {e}")
 
 if __name__ == "__main__":
-    model = 'medium'
+    model = 'small_pro'
     main(model)
 
