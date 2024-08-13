@@ -64,9 +64,9 @@ class CNN_SEQ(nn.Module):
 
         self.fc = nn.Sequential(nn.Linear(128*in_channel*17, 128, bias=True) ,  
                                 nn.ReLU(),           
-                                nn.Linear(128, 63, bias=True),
+                                nn.Linear(128, 4, bias=True),
                                 nn.ReLU(),
-                                nn.Linear(63, output_dim, bias=True),
+                                nn.Linear(4, output_dim, bias=True),
                                 )
     
     def forward(self, inputs):

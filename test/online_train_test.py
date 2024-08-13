@@ -1,4 +1,5 @@
 """Test for online training
+model id: 20240813_105549 -> hidden dim = 5 -> tiny
 model id: 20240802_141501 -> hidden dim = 17 -> small
 model id: 20240809_145528 -> hidden dim = 55 -> small_plus
 model id: 20240812_133404 -> hidden dim = 64 -> medium_minus
@@ -18,8 +19,8 @@ from online_learning import OnlineLearning
 def test():
     random.seed(9527)
     torch.manual_seed(9527)
-    online_learning = OnlineLearning('svd')
-    online_learning.online_learning(5000)
+    online_learning = OnlineLearning()
+    online_learning.online_learning(5000, is_scratch=False)
 
 if __name__ == '__main__':
     test()

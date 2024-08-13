@@ -2,7 +2,10 @@ import shutil
 import os
 import sys
 
-root = "/home/hao/Desktop/MPI/Online_Convex_Optimization/OnlineILC"
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+import utils as fcs
+
+root = fcs.get_parent_path(lvl=1)
 path_des = os.path.join(root, 'src', 'data', 'pretrain_model')
 
 def main(model):
@@ -32,6 +35,6 @@ def move_and_rename_file(source, destination):
         print(f"Error: {e}")
 
 if __name__ == "__main__":
-    model = 'medium_minus'
+    model = 'tiny'
     main(model)
 

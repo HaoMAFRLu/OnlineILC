@@ -39,8 +39,6 @@ class OnlineLearning():
         self.nr_marker_interval = nr_marker_interval
         self.mode = mode
 
-        
-        
         parent = fcs.get_parent_path(lvl=1)
         current_time = datetime.now()
         folder_name = current_time.strftime("%Y%m%d_%H%M%S")
@@ -108,8 +106,6 @@ class OnlineLearning():
         """
         self.DATA_PROCESS = data_process.DataProcess('online', PARAMS)
     
-    
-
     def NN_initialization(self, path: Path, PARAMS: dict) -> None:
         """Build the model and load the pretrained weights
         """
@@ -195,23 +191,36 @@ class OnlineLearning():
         a_tensor = torch.from_numpy(a).to(self.device)
         return a_tensor
     
+    def extract_last_layer_tensor(self, NN: torch.nn) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Extract the last layer of the neural network
+        """
+        last_layer = NN.fc[-1]
+        return last_layer.weight.data.clone(), last_layer.bias.data.clone()
+
+    def extract_last_layer_tensor_vec(self, NN: torch.nn) -> torch.Tensor:
+        """Extract the last layer and vectorize them
+        """
+        w, b = self.extract_last_layer_tensor(NN)
+        return torch.cat((w.t().flatten(), b.flatten()), dim=0).view(-1, 1)
+    
     def extract_last_layer(self, NN: torch.nn) -> Tuple[Array2D, Array]:
         """Return the parameters of the last layer, including
         the weights and bis
         """
-        last_layer = NN.fc[-1]
-        w_tensor = last_layer.weight.data
-        b_tensor = last_layer.bias.data
-
+        w_tensor, b_tensor = self.extract_last_layer_tensor(NN)
         w = self.tensor2np(w_tensor)
         b = self.tensor2np(b_tensor)
         return w, b
     
-    def extract_output(self, NN: torch.nn) -> Array:
+    def extract_output_tensor(self) -> torch.Tensor:
+        """
+        """
+        return second_linear_output[-1].clone()
+
+    def extract_output(self) -> Array:
         """Extract the ouput of the last second layer
         """
-        phi_tensor = second_linear_output[-1]
-        return self.tensor2np(phi_tensor)
+        return self.tensor2np(self.extract_output_tensor())
 
     def extract_NN_info(self, NN: torch.nn) -> Tuple[Array, Array]:
         """Extract the infomation of the neural network
@@ -226,29 +235,27 @@ class OnlineLearning():
         vec: the column vector of the parameters of the last layer,
            including the bias
         """
-        phi = self.extract_output(NN).reshape(-1, 1)
-        w_, b_ = self.extract_last_layer(NN)
-
-        w = fcs.get_flatten(w_).reshape(-1, 1)
-        b = b_.reshape(-1, 1)
-        vec = np.vstack((w, b))
-        
+        vec = self.extract_last_layer_tensor_vec(NN)
+        phi = self.extract_output_tensor()        
         return phi, vec
 
-    def assign_last_layer(self, NN: torch.nn, value: Array) -> None:
+    def _recover_last_layer(self, value: torch.Tensor, num: int) -> None:
+        """
+        """
+        w = value[0:num].view(-1, 550).t()
+        b = value[num:].flatten()
+        return w, b        
+
+    def assign_last_layer(self, NN: torch.nn, value: torch.Tensor) -> None:
         """Assign the value of the last layer of the neural network.
         """
         last_layer = NN.fc[-1]
+        num = last_layer.weight.numel()
+        w, b = self._recover_last_layer(value, num)
         
-        w = fcs.get_unflatten(value[0:last_layer.weight.numel()].flatten(), 550)
-        b = value[last_layer.weight.numel():].flatten()
-
-        w_tensor = self.np2tensor(w)    
-        b_tensor = self.np2tensor(b)
-
         with torch.no_grad():
-            last_layer.weight.copy_(w_tensor)
-            last_layer.bias.copy_(b_tensor)
+            last_layer.weight.copy_(w)
+            last_layer.bias.copy_(b)
 
     def save_checkpoint(self, idx: int) -> None:
         """Save the model
@@ -304,17 +311,18 @@ class OnlineLearning():
         loss = self.get_loss(yout.flatten(), yref[0, 1:].flatten())
         return yout, d, u, loss
 
-    def online_learning(self, nr_iterations: int=100) -> None:
+    def online_learning(self, nr_iterations: int=100,
+                        is_scratch: bool=False) -> None:
         """
         """
         if self.mode is None:
-            self._online_learning(nr_iterations)
+            self._online_learning(nr_iterations, is_scratch)
         elif self.mode == 'svd':
-            self._online_learning_svd(nr_iterations)
+            self._online_learning_svd(nr_iterations, is_scratch)
         elif self.mode == 'ada-svd':
-            self._online_learning_ada_svd(nr_iterations)
+            self._online_learning_ada_svd(nr_iterations, is_scratch)
 
-    def _online_learning(self, nr_iterations: int=100) -> None:
+    def _online_learning(self, nr_iterations: int=100, is_scratch: bool=False) -> None:
         """Online learning.
         1. sample a reference trajectory randomly
         2. do the inference using the neural network -> u
@@ -322,37 +330,55 @@ class OnlineLearning():
         4. update the last layer using kalman filter
         """
         self.model.NN.eval()
+        yref_marker, path_marker = self.marker_initialization()
+        vec = self.extract_last_layer_tensor_vec(self.model.NN)
+
+        if is_scratch is True:
+            vec = vec*0.0
+
+        self.kalman_filter.import_d(vec)
 
         for i in range(nr_iterations):
             tt = time.time()
 
-            yref, _ = self.traj.get_traj()
+            self.assign_last_layer(self.model.NN, vec)
+
+            if i%self.nr_marker_interval == 0:
+                self.run_marker_step(yref_marker, path_marker)
+
             t1 = time.time()
+            yref, _ = self.traj.get_traj()
             yout, d, u, loss = self._rum_sim(yref)
-            tsim = time.tim() - t1
+            tsim = time.time() - t1
 
             phi, vec = self.extract_NN_info(self.model.NN)
 
-            if self.kalman_filter.d is None:
-                self.kalman_filter.import_d(vec)
-
             t1 = time.time()
             self.kalman_filter.get_A(phi)
-            vec_, tk, td, tp = self.kalman_filter.estimate(yout, u)      
-            self.assign_last_layer(self.model.NN, vec_)
+            vec, tk, td, tp = self.kalman_filter.estimate(yout, self.Bd@u.reshape(-1, 1))
             t2 = time.time()
 
             ttotal = time.time() - tt
+            self.total_loss += loss
             fcs.print_info(
                 Epoch=[str(i+1)+'/'+str(nr_iterations)],
                 Loss=[loss],
+                AvgLoss=[self.total_loss/(i+1)],
                 Ttotal = [ttotal],
                 Tsim = [tsim],
-                # Tk=[tk],
-                # Td=[td],
-                # Tp=[tp]
+                Tk=[tk],
+                Td=[td],
+                Tp=[tp]
             )
 
+            if (i+1) % self.nr_data_interval == 0:
+                self.save_data(i,
+                               u=u,
+                               yref=yref,
+                               d=d,
+                               yout=yout,
+                               loss=loss)
+                
             if (i+1) % self.nr_interval == 0:
                 self.save_checkpoint(i+1)
 
@@ -366,47 +392,58 @@ class OnlineLearning():
         self.kalman_filter.VT = VT
         return U, S, VT
 
+    def marker_initialization(self) -> Tuple[Array2D, Path]:
+        """Generate the marker trajectory and the 
+        path to marker folder
+        """
+        self.nr_marker = 0
+        self.loss_marker = []
+        self.total_loss = 0
+        yref_marker, _ = self.traj.get_traj()
+        path_marker = os.path.join(self.path_model, 'loss_marker')
+        fcs.mkdir(path_marker)
+        return yref_marker, path_marker
+
+    def run_marker_step(self, yref: Array2D, path: Path) -> None:
+        """Evaluate the marker trajectory
+        """
+        self.nr_marker += 1
+        yout, d, u, loss = self._rum_sim(yref)
+        self.loss_marker.append(np.round(loss, 4))
+        fcs.print_info(
+        Marker=[str(self.nr_marker)],
+        Loss=[self.loss_marker[-6:]])
+
+        path_marker_file = os.path.join(path, str(self.nr_marker))
+        with open(path_marker_file, 'wb') as file:
+            pickle.dump(yref, file)
+            pickle.dump(yout, file)
+            pickle.dump(d, file)
+            pickle.dump(u, file)
+            pickle.dump(loss, file)
+
     def _online_learning_ada_svd(self, nr_iterations: int=100,
+                                 is_scratch: bool=False,
                                  nr_ada: int=5) -> None:
         """
         """
         self.model.NN.eval()
         U, S, VT = self.kf_initialization(self.model.NN)
 
-        S = S*0.0
-        G = self.svd_inference(U, S, VT)
-        vec = fcs.get_flatten(G)
-        self.assign_last_layer(self.model.NN, vec)
-
-        yref_marker, _ = self.traj.get_traj()
-        path_marker = os.path.join(self.path_model, 'loss_marker')
-        fcs.mkdir(path_marker)
-
-        nr_marker = 0
-        loss_marker = []
+        if is_scratch is True:
+            S = S*0.0
+    
+        yref_marker, path_marker = self.marker_initialization()
         yout_ada = None
         Bu_ada = None
-        total_loss = 0
 
         for i in range(nr_iterations):
-            if i%self.nr_marker_interval == 0:
-                nr_marker += 1
-                yout, d, u, loss = self._rum_sim(yref_marker)
-                loss_marker.append(np.round(loss, 4))
-                fcs.print_info(
-                Marker=[str(nr_marker)],
-                Loss=[loss_marker[-6:]])
-
-                path_marker_file = os.path.join(path_marker, str(nr_marker))
-                with open(path_marker_file, 'wb') as file:
-                    pickle.dump(yref_marker, file)
-                    pickle.dump(yout, file)
-                    pickle.dump(d, file)
-                    pickle.dump(u, file)
-                    pickle.dump(loss, file)
-            
             tt = time.time()
+            self.NN_update(U, S, VT)
 
+            if i%self.nr_marker_interval == 0:
+                self.run_marker_step(yref_marker, path_marker)
+            
             yref, _ = self.traj.get_traj()
             t1 = time.time()
             yout, d, u, loss = self._rum_sim(yref)
@@ -422,19 +459,15 @@ class OnlineLearning():
             t1 = time.time()
             self.kalman_filter.get_A(phi, max_rows=nr_ada*550)
             S, tk, td, tp = self.kalman_filter.estimate(yout_ada, Bu_ada)      
-            
-            G = self.svd_inference(U, S, VT)
-            vec = fcs.get_flatten(G)
-            self.assign_last_layer(self.model.NN, vec)
             t2 = time.time()
 
             ttotal = time.time() - tt
 
-            total_loss += loss
+            self.total_loss += loss
             fcs.print_info(
                 Epoch=[str(i+1)+'/'+str(nr_iterations)],
                 Loss=[loss],
-                AvgLoss=[total_loss/(i+1)],
+                AvgLoss=[self.total_loss/(i+1)],
                 Ttotal = [ttotal],
                 Tsim = [tsim],
                 Tk=[tk],
@@ -453,42 +486,29 @@ class OnlineLearning():
             if (i+1) % self.nr_interval == 0:
                 self.save_checkpoint(i+1)
 
-    def _online_learning_svd(self, nr_iterations: int=100) -> None:
+    def NN_update(self, U: Array2D, S: Array, VT: Array2D) -> None:
+        """Update the last layer of the neural network
+        """
+        G = self.svd_inference(U, S, VT)
+        vec = fcs.get_flatten(G)
+        self.assign_last_layer(self.model.NN, vec)
+
+    def _online_learning_svd(self, nr_iterations: int=100,
+                             is_scratch: bool=False) -> None:
         """
         """
         self.model.NN.eval()
         U, S, VT = self.kf_initialization(self.model.NN)
         
-        S = S*0.0
-        G = self.svd_inference(U, S, VT)
-        vec = fcs.get_flatten(G)
-        self.assign_last_layer(self.model.NN, vec)
-
-        yref_marker, _ = self.traj.get_traj()
-        path_marker = os.path.join(self.path_model, 'loss_marker')
-        fcs.mkdir(path_marker)
-
-        nr_marker = 0
-        loss_marker = []
-
-        total_loss = 0.0
+        if is_scratch is True:
+            S = S*0.0
+       
+        yref_marker, path_marker = self.marker_initialization()
         for i in range(nr_iterations):
+            self.NN_update(U, S, VT)
 
             if i%self.nr_marker_interval == 0:
-                nr_marker += 1
-                yout, d, u, loss = self._rum_sim(yref_marker)
-                loss_marker.append(np.round(loss, 4))
-                fcs.print_info(
-                Marker=[str(nr_marker)],
-                Loss=[loss_marker[-6:]])
-
-                path_marker_file = os.path.join(path_marker, str(nr_marker))
-                with open(path_marker_file, 'wb') as file:
-                    pickle.dump(yref_marker, file)
-                    pickle.dump(yout, file)
-                    pickle.dump(d, file)
-                    pickle.dump(u, file)
-                    pickle.dump(loss, file)
+                self.run_marker_step(yref_marker, path_marker)
 
             tt = time.time()
             yref, _ = self.traj.get_traj()
@@ -504,19 +524,15 @@ class OnlineLearning():
             t1 = time.time()
             self.kalman_filter.get_A(phi)
             S, tk, td, tp = self.kalman_filter.estimate(yout, self.B@u.reshape(-1, 1))      
-            
-            G = self.svd_inference(U, S, VT)
-            vec = fcs.get_flatten(G)
-            self.assign_last_layer(self.model.NN, vec)
             t2 = time.time()
 
             ttotal = time.time() - tt
 
-            total_loss += loss
+            self.total_loss += loss
             fcs.print_info(
                 Epoch=[str(i+1)+'/'+str(nr_iterations)],
                 Loss=[loss],
-                AvgLoss=[total_loss/(i+1)],
+                AvgLoss=[self.total_loss/(i+1)],
                 Ttotal = [ttotal],
                 Tsim = [tsim],
                 Tk=[tk],
@@ -532,6 +548,7 @@ class OnlineLearning():
                                d=d,
                                yout=yout,
                                loss=loss)
+                
             if (i+1) % self.nr_interval == 0:
                 self.save_checkpoint(i+1)
 
