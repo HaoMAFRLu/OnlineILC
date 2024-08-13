@@ -7,7 +7,7 @@ import utils as fcs
 
 root = fcs.get_parent_path(lvl=1)
 file = os.path.join(root, 'params.txt')
-values = [f"{10**-i:.0e}" for i in range(3, 9)]
+values = [f"{10**-i:.0e}" for i in range(3, 7)]
 combinations = itertools.product(values, repeat=3)
 
 # 打开文件以写入参数
