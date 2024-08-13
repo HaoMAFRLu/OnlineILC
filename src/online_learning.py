@@ -41,7 +41,7 @@ class OnlineLearning():
 
         parent = fcs.get_parent_path(lvl=1)
         current_time = datetime.now()
-        folder_name = current_time.strftime("%Y%m%d_%H%M%S")
+        folder_name = current_time.strftime('%Y%m%d_%H%M%S_%f')
         self.path_model = os.path.join(parent, 'data', 'online_training', folder_name)
         self.path_data = os.path.join(self.path_model, 'data')
 
