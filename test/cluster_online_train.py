@@ -54,7 +54,7 @@ def test():
 
     print(folder_name)
     online_learning = OnlineLearning(folder_name=folder_name,
-                                     sgima_w=args.sigma_w,
+                                     sigma_w=args.sigma_w,
                                      sigma_y=args.sigma_y,
                                      sigma_d=args.sigma_d,
                                      sigma_ini=args.sigma_ini)
