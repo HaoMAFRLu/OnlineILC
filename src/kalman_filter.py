@@ -67,6 +67,17 @@ class KalmanFilter():
         self.B = torch.from_numpy(self.B).to(self.device).float()
         self.Bd = torch.from_numpy(self.Bd).to(self.device).float()
 
+        self.yout_tensor = torch.empty(550, 1).to(self.device).float()
+        self.Bu_tensor = torch.empty(550, 1).to(self.device).float()
+
+        self.R = torch.zeros_like(self.R_).to(self.device).float()
+        self.d = torch.empty(self.dim*550, 1).to(self.device).float()
+        self.K = torch.empty(self.dim*550, 550).to(self.device).float()
+        self.d_pred = torch.empty(self.dim*550, 1).to(self.device).float()
+        self.P_pred = torch.zeros_like(self.P).to(self.device).float()
+        self.z = torch.empty(550, 1).to(self.device).float()
+        self.A = torch.empty(550, self.dim*550).to(self.device).float()
+
     def update_covariance(self, dim: int, **kwargs) -> None:
         """Update the covariance matrices
         """
@@ -85,7 +96,7 @@ class KalmanFilter():
         if isinstance(d, np.ndarray):
             self.d = d.copy()
         elif isinstance(d, torch.Tensor):
-            self.d = d.clone()
+            self.d.copy_(d)
 
     def add_one(self, phi: Array) -> Array:
         """Add element one at the end
@@ -113,7 +124,7 @@ class KalmanFilter():
         
         if self.mode is None:            
             # self.A = np.kron(phi_bar, self.Bd)
-            self.A = torch.kron(phi_bar.view(1, -1), self.Bd.contiguous())/1000.0
+            self.A.copy_(torch.kron(phi_bar.view(1, -1), self.Bd.contiguous())/1000.0)
 
         elif self.mode == 'svd':
             v = self.get_v(self.VT, phi_bar)
@@ -193,44 +204,52 @@ class KalmanFilter():
             return P+Q
         
         def get_K(P, A, R):
-            PAT = torch.matmul(P, A.t())
-            APAT = torch.matmul(A, PAT)
-            inv_APATR = torch.inverse(APAT+R)
-            return torch.matmul(PAT, inv_APATR)
+            # PAT = torch.matmul(P, A.t())
+            # APAT = torch.matmul(A, PAT)
+            # inv_APATR = torch.inverse(APAT+R)
+            # return torch.matmul(PAT, inv_APATR)
+            with torch.no_grad():
+                return torch.matmul(torch.matmul(P, A.t()), torch.inverse(torch.matmul(A, torch.matmul(P, A.t())) + R))
         
         def update_d(d, K, z, A):
-            Ad = torch.matmul(A, d)
-            zAd = z - Ad
-            return d + torch.matmul(K, zAd)
+            # Ad = torch.matmul(A, d)
+            # zAd = z - Ad
+            # return d + torch.matmul(K, zAd)
+            with torch.no_grad():
+                return d + torch.matmul(K, z - torch.matmul(A, d))
     
         def get_R(A, R_, sigma_w):
-            AAT = torch.matmul(A, A.t())*sigma_w
-            return AAT + R_
+            # AAT = torch.matmul(A, A.t())*sigma_w
+            # return AAT + R_
+            with torch.no_grad():
+                return torch.matmul(A, A.t()) * sigma_w + R_
 
         def update_P(I, K, A, P, R):
-            KA = torch.matmul(K, A)
-            I_KA = I - KA
-            KR = torch.matmul(K, R)
-            KRT = torch.matmul(KR, K.t())
-            I_KAP = torch.matmul(I_KA, P)
-            return torch.matmul(I_KAP, I_KA.t()) + KRT
-
-        R = get_R(self.A, self.R_, self.sigma_w)
-        z = get_difference(yout, Bu)
-        d_pred = self.d.clone()
+            # KA = torch.matmul(K, A)
+            # I_KA = I - KA
+            # KR = torch.matmul(K, R)
+            # KRT = torch.matmul(KR, K.t())
+            # I_KAP = torch.matmul(I_KA, P)
+            # return torch.matmul(I_KAP, I_KA.t()) + KRT
+            with torch.no_grad():
+                return torch.matmul(torch.matmul(I - torch.matmul(K, A), P), (I - torch.matmul(K, A)).t()) + torch.matmul(torch.matmul(K, R), K.t())
         
-        P_pred = get_P_prediction(self.P, self.Q)
+        self.R.copy_(get_R(self.A, self.R_, self.sigma_w))
+        self.z.copy_(get_difference(yout, Bu))
+        self.d_pred.copy_(self.d)
+        
+        self.P_pred.copy_(get_P_prediction(self.P, self.Q))
 
         t = time.time()
-        K = get_K(P_pred, self.A, R)
+        self.K.copy_(get_K(self.P_pred, self.A, self.R))
         t_k = time.time() - t
         
         t = time.time()
-        self.d = update_d(d_pred, K, z, self.A)
+        self.d.copy_(update_d(self.d_pred, self.K, self.z, self.A))
         t_d = time.time() - t
 
         t = time.time()
-        self.P = update_P(self.I, K, self.A, P_pred, R)
+        self.P.copy_(update_P(self.I, self.K, self.A, self.P_pred, self.R))
         t_p = time.time() - t
 
         return self.d, t_k, t_d, t_p
@@ -244,9 +263,9 @@ class KalmanFilter():
         Bu: B*u, u is the input of the system
         """
         if self.mode is None:
-            yout_tensor = torch.from_numpy(yout).to(self.device).float()
-            Bu_tensor = torch.from_numpy(Bu).to(self.device).float()
-            return self._estimate_tensor(yout_tensor, Bu_tensor)
+            self.yout_tensor.copy_(torch.from_numpy(yout).to(self.device).float())
+            self.Bu_tensor.copy_(torch.from_numpy(Bu).to(self.device).float())
+            return self._estimate_tensor(self.yout_tensor, self.Bu_tensor)
         else:
             return self._estimate_numpy(yout, Bu)
 

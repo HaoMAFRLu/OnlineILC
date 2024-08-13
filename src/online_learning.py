@@ -195,7 +195,7 @@ class OnlineLearning():
         """Extract the last layer of the neural network
         """
         last_layer = NN.fc[-1]
-        return last_layer.weight.data.clone(), last_layer.bias.data.clone()
+        return last_layer.weight.data, last_layer.bias.data
 
     def extract_last_layer_tensor_vec(self, NN: torch.nn) -> torch.Tensor:
         """Extract the last layer and vectorize them
@@ -215,7 +215,7 @@ class OnlineLearning():
     def extract_output_tensor(self) -> torch.Tensor:
         """
         """
-        return second_linear_output[-1].clone()
+        return second_linear_output[-1]
 
     def extract_output(self) -> Array:
         """Extract the ouput of the last second layer
@@ -355,7 +355,7 @@ class OnlineLearning():
 
             t1 = time.time()
             self.kalman_filter.get_A(phi)
-            vec, tk, td, tp = self.kalman_filter.estimate(yout, self.Bd@u.reshape(-1, 1))
+            vec, tk, td, tp = self.kalman_filter.estimate(yout, self.B@u.reshape(-1, 1))
             t2 = time.time()
 
             ttotal = time.time() - tt
@@ -364,11 +364,12 @@ class OnlineLearning():
                 Epoch=[str(i+1)+'/'+str(nr_iterations)],
                 Loss=[loss],
                 AvgLoss=[self.total_loss/(i+1)],
+                Umax=[np.max(np.abs(u))],
                 Ttotal = [ttotal],
                 Tsim = [tsim],
-                Tk=[tk],
-                Td=[td],
-                Tp=[tp]
+                # Tk=[tk],
+                # Td=[td],
+                # Tp=[tp]
             )
 
             if (i+1) % self.nr_data_interval == 0:
