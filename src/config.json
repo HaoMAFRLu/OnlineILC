@@ -19,13 +19,13 @@
     "is_initialization": false,
     "loss_function": "Huber",
     "lambda_regression": 1,
-    "learning_rate": 1e-4,
-    "weight_decay": 1e-4,
+    "learning_rate": 0.0001,
+    "weight_decay": 0.0001,
     "filter_size": 7,
     "output_dim": 550,
-    "sigma_y": 1e-3,
-    "sigma_d": 1e-7,
-    "sigma_ini": 1e-7,
+    "sigma_y": 1.0,
+    "sigma_d": 1.0,
+    "sigma_ini": 1.0,
     "sigma_w": 0.0,
-    "dim": 5
+    "dim": 65
 }
