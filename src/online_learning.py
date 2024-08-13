@@ -31,7 +31,12 @@ class OnlineLearning():
                  nr_interval: int=500,
                  nr_data_interval: int=1,
                  nr_marker_interval: int=20,
-                 folder_name: str=None) -> None:
+                 folder_name: str=None,
+                 sigma_w=None,
+                 sigma_y=None,
+                 sigma_d=None,
+                 sigma_ini=None) -> None:
+        
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.root = fcs.get_parent_path(lvl=0)
         
@@ -55,6 +60,12 @@ class OnlineLearning():
         parent_dir = fcs.get_parent_path(lvl=1)
         fcs.copy_folder(os.path.join(parent_dir, 'src'), self.path_model)
         fcs.copy_folder(os.path.join(parent_dir, 'test'), self.path_model)
+        
+        self.sigma_w = sigma_w
+        self.sigma_y = sigma_y
+        self.sigma_d = sigma_d
+        self.sigma_ini = sigma_ini
+        
         self.initialization()
 
     def build_model(self) -> torch.nn:
@@ -147,7 +158,9 @@ class OnlineLearning():
                                      PARAMS: dict) -> None:
         """Initialize the kalman filter
         """
-        self.kalman_filter = KalmanFilter(mode, self.B, self.Bd, PARAMS)
+        self.kalman_filter = KalmanFilter(mode, self.B, self.Bd, PARAMS, 
+                                          self.sigma_w, self.sigma_y, 
+                                          self.sigma_d, self.sigma_ini)
 
     def initialization(self) -> torch.nn:
         """Initialize everything:

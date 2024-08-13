@@ -1,9 +1,9 @@
 executable = /lustre/home/hma2/projects/OnlineILC/myenv/bin/python
-arguments = -u test/cluster_online_train.py --sigma-y $(arg1) --sigma-d $(arg2) --sigma-ini $(arg3)
+arguments = -u test/cluster_online_train.py --sigma-w $(arg1) --sigma-y $(arg2) --sigma-d $(arg3) --sigma-ini $(arg4)
 error = jobs/batch$(Process).err
 output = jobs/batch$(Process).out
 log = jobs/batch$(Process).log
 request_gpus = 1
 request_memory = 65536
 request_cpus = 1
-queue arg1 arg2 arg3 from params.txt
+queue arg1 arg2 arg3 arg4 from params.txt

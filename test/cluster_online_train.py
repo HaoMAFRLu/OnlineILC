@@ -19,18 +19,18 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 's
 from online_learning import OnlineLearning
 import utils as fcs
 
-def update_config(file_path, param_path, new_value):
-    with open(file_path, 'r') as file:
-        config = json.load(file)
+# def update_config(file_path, param_path, new_value):
+#     with open(file_path, 'r') as file:
+#         config = json.load(file)
 
-    keys = param_path.split('.')
-    sub_config = config
-    for key in keys[:-1]:
-        sub_config = sub_config[key]
-    sub_config[keys[-1]] = new_value
+#     keys = param_path.split('.')
+#     sub_config = config
+#     for key in keys[:-1]:
+#         sub_config = sub_config[key]
+#     sub_config[keys[-1]] = new_value
 
-    with open(file_path, 'w') as file:
-        json.dump(config, file, indent=4)
+#     with open(file_path, 'w') as file:
+#         json.dump(config, file, indent=4)
 
 def test():
     root = fcs.get_parent_path(lvl=0)
@@ -40,19 +40,24 @@ def test():
     torch.manual_seed(9527)
 
     parser = argparse.ArgumentParser(description="Online Training")
+    parser.add_argument('--sigma-w', type=float, required=True, help="Sigma w")
     parser.add_argument('--sigma-y', type=float, required=True, help="Sigma y")
     parser.add_argument('--sigma-d', type=float, required=True, help="Sigma d")
     parser.add_argument('--sigma-ini', type=float, required=True, help="Sigma initial")
     args = parser.parse_args()
 
-    update_config(path, 'sigma_y', args.sigma_y)
-    update_config(path, 'sigma_d', args.sigma_d)
-    update_config(path, 'sigma_ini', args.sigma_ini)
+    # update_config(path, 'sigma_y', args.sigma_y)
+    # update_config(path, 'sigma_d', args.sigma_d)
+    # update_config(path, 'sigma_ini', args.sigma_ini)
 
-    folder_name = str(args.sigma_y)+'_'+str(args.sigma_d)+'_'+str(args.sigma_ini)
+    folder_name = str(args.sigma_w)+'_'+str(args.sigma_y)+'_'+str(args.sigma_d)+'_'+str(args.sigma_ini)
 
     print(folder_name)
-    online_learning = OnlineLearning(folder_name=folder_name)
+    online_learning = OnlineLearning(folder_name=folder_name,
+                                     sgima_w=args.sigma_w,
+                                     sigma_y=args.sigma_y,
+                                     sigma_d=args.sigma_d,
+                                     sigma_ini=args.sigma_ini)
     online_learning.online_learning(5000, is_scratch=False)
 
 if __name__ == '__main__':

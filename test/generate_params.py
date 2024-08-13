@@ -7,8 +7,12 @@ import utils as fcs
 
 root = fcs.get_parent_path(lvl=1)
 file = os.path.join(root, 'params.txt')
-values = [f"{10**-i:.0e}" for i in range(3, 8)]
-combinations = itertools.product(values, repeat=3)
+value_w = ['0']
+value_y = [f"{10**-i:.0e}" for i in range(3, 4)]
+value_d = [f"{10**-i:.0e}" for i in range(3, 4)]
+value_ini = [f"{10**-i:.0e}" for i in range(3, 8)]
+
+combinations = itertools.product(value_w, value_y, value_d, value_ini)
 
 # 打开文件以写入参数
 with open(file, 'w') as f:

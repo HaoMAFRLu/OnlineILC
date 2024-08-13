@@ -12,14 +12,25 @@ class KalmanFilter():
     """
     def __init__(self, mode: str,
                  B: Array2D, Bd: Array2D, 
-                 PARAMS: dict) -> None:
+                 PARAMS: dict.clear,
+                 sigma_w: float=None,
+                 sigma_y: float=None,
+                 sigma_d: float=None,
+                 sigma_ini: float=None) -> None:
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.mode = mode
 
-        self.sigma_w = PARAMS["sigma_w"]
-        self.sigma_d = PARAMS["sigma_d"]
-        self.sigma_y = PARAMS["sigma_y"]
-        self.sigma_ini = PARAMS["sigma_ini"]
+        if sigma_y is None:
+            self.sigma_w = PARAMS["sigma_w"]
+            self.sigma_d = PARAMS["sigma_d"]
+            self.sigma_y = PARAMS["sigma_y"]
+            self.sigma_ini = PARAMS["sigma_ini"]
+        else:
+            self.sigma_w = sigma_w
+            self.sigma_d = sigma_d
+            self.sigma_y = sigma_y
+            self.sigma_ini = sigma_ini
+        
         self.dim = PARAMS["dim"]
         self.q = self.dim * 550
 
