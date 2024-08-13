@@ -1,0 +1,8 @@
+executable = /lustre/home/hma2/projects/OnlineILC/myenv/bin/python
+arguments = batch_test.py --learning-rate $(arg1) --batch-size $(arg2)
+error = jobs/batch_test$(Process).err
+output = jobs/batch_test$(Process).out
+log = jobs/batch_test$(Process).log
+request_memory = 1024
+request_cpus = 1
+queue arg1 arg2 from params.txt
