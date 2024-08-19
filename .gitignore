@@ -31,3 +31,9 @@ __pycache__/
 .DS_Store
 
 slprj/
+
+# Ignore the tikz plots
+tikz/
+
+# Ignore the papers
+literature review

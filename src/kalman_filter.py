@@ -7,18 +7,23 @@ import torch
 
 from mytypes import Array, Array2D
 import utils as fcs
+
+
+
 class KalmanFilter():
     """
     """
     def __init__(self, mode: str,
                  B: Array2D, Bd: Array2D, 
-                 PARAMS: dict.clear,
+                 PARAMS: dict,
                  sigma_w: float=None,
                  sigma_y: float=None,
                  sigma_d: float=None,
-                 sigma_ini: float=None) -> None:
+                 sigma_ini: float=None,
+                 location: str='local') -> None:
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.mode = mode
+        self.location = location
 
         if sigma_y is None:
             self.sigma_w = PARAMS["sigma_w"]
@@ -43,16 +48,9 @@ class KalmanFilter():
     def initialization(self) -> None:
         """Initialize the kalman filter
         """
-        if self.mode is None:
+        if self.mode == 'full_states':
             self.I = np.eye(self.q)
         elif self.mode == 'svd':
-            self.I = np.eye(min(550, self.dim))
-            if self.dim < 550:
-                self.Z = np.zeros((550-self.dim, self.dim))
-                self.dir = 'v'
-            elif self.dim > 550:
-                self.dir = 'h'
-        elif self.mode == 'ada-svd':
             self.A = None
             self.I = np.eye(min(550, self.dim))
             if self.dim < 550:
@@ -65,7 +63,7 @@ class KalmanFilter():
         self.Q = self.I * self.sigma_d
         self.P = self.I * self.sigma_ini
 
-        if self.mode is None:
+        if self.location == 'cluster':
             self.tensor_intialization()
     
     def tensor_intialization(self) -> None:
@@ -126,6 +124,8 @@ class KalmanFilter():
         parameters:
         -----------
         phi: the output of the last second layer
+
+        TODO: need two versions
         """
         if isinstance(phi, np.ndarray):
             phi_bar = self.add_one(phi)
@@ -152,11 +152,15 @@ class KalmanFilter():
             self.A = fcs.adjust_matrix(self.A, cur_A, kwargs["max_rows"])
             self.update_covariance(self.A.shape[0], max_rows=kwargs["max_rows"])
 
-    def get_Bd_bar(self, Bd: Array2D, U: Array2D) -> None:
+
+    def get_Bd_bar(self) -> None:
         """Return Bd_bar
         """
-        self.Bd_bar = Bd@U
-    
+        if self.location == 'local':
+            self.Bd_bar = self.Bd@self.U
+        elif self.location == 'cluster':
+            pass
+
     def _estimate_numpy(self, yout: Array2D, Bu: Array2D) -> Array2D:
         """Numpy version
         """

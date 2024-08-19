@@ -13,8 +13,8 @@ def list_files(directory):
 def test():
     is_save = True
 
-    root = "/home/hao/Desktop/MPI/Online_Convex_Optimization/OnlineILC/data/online_training"
-    file = "20240812_114340"
+    root = "/home/hao/Desktop/MPI/Online_Convex_Optimization/OnlineILC/data/cluster_training"
+    file = "0.0_0.001_1e-07_0.001"
     path = os.path.join(root, file)
     path_data = os.path.join(path, 'data')
     path_figure = os.path.join(path, 'figure')
@@ -81,11 +81,11 @@ def test():
         d = data["d"].flatten()
         yref = data["yref"].flatten()[1:]
         u = data["u"].flatten()
-        s = data["hidden_states"].flatten()
+        # s = data["hidden_states"].flatten()
         loss = data["loss"]
         loss_list.append(loss)
         
-        s_list.append(s)
+        # s_list.append(s)
 
         if i%50 == 0:
             fig, axs = plt.subplots(4, 1, figsize=(20, 40))
@@ -103,26 +103,27 @@ def test():
             fcs.set_axes_format(ax, r'Time index', r'disturbance')
             ax.plot(d, linewidth=1.0, linestyle='-')
 
-            ax = axs[3]
-            fcs.set_axes_format(ax, r'Index', r'Hidden states')
-            ax.plot(s, linewidth=1.0, linestyle='-')
+            # ax = axs[3]
+            # fcs.set_axes_format(ax, r'Index', r'Hidden states')
+            # ax.plot(s, linewidth=1.0, linestyle='-')
+
             if is_save is True:
                 plt.savefig(os.path.join(path_train_fig,str(i)+'.pdf'))
                 plt.close()
             else:
                 plt.show()
 
-    fig, ax = plt.subplots(1, 1, figsize=(20, 20))
-    fcs.set_axes_format(ax, r'Index', r'Hidden state')
-    for i in range(len(s_list)):
-        if i%50 == 0:
-            s = s_list[i]
-            ax.plot(s, linewidth=0.5, linestyle='-')
-    if is_save is True:
-        plt.savefig(os.path.join(path_train_fig,'hidden_state.pdf'))
-        plt.close()
-    else:
-        plt.show()
+    # fig, ax = plt.subplots(1, 1, figsize=(20, 20))
+    # fcs.set_axes_format(ax, r'Index', r'Hidden state')
+    # for i in range(len(s_list)):
+    #     if i%50 == 0:
+    #         s = s_list[i]
+    #         ax.plot(s, linewidth=0.5, linestyle='-')
+    # if is_save is True:
+    #     plt.savefig(os.path.join(path_train_fig,'hidden_state.pdf'))
+    #     plt.close()
+    # else:
+    #     plt.show()
 
     fig, ax = plt.subplots(1, 1, figsize=(20, 20))
     fcs.set_axes_format(ax, r'Iteration', r'Loss')

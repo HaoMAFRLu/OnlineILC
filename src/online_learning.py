@@ -27,7 +27,9 @@ second_linear_output = []
 class OnlineLearning():
     """Classes for online learning
     """
-    def __init__(self, mode: str=None, 
+    def __init__(self, mode: str='full_states',
+                 location:str='local',
+                 rolling: int=1,
                  nr_interval: int=500,
                  nr_data_interval: int=1,
                  nr_marker_interval: int=20,
@@ -39,7 +41,8 @@ class OnlineLearning():
         
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.root = fcs.get_parent_path(lvl=0)
-        
+        self.location = location
+        self.rolling = rolling
         self.nr_interval = nr_interval
         self.nr_data_interval = nr_data_interval
         self.nr_marker_interval = nr_marker_interval
@@ -49,7 +52,7 @@ class OnlineLearning():
 
         if folder_name is None:
             current_time = datetime.now()
-            folder_name = current_time.strftime('%Y%m%d_%H%M%S_%f')
+            folder_name = current_time.strftime('%Y%m%d_%H%M%S')
         
         self.path_model = os.path.join(parent, 'data', 'online_training', folder_name)
         self.path_data = os.path.join(self.path_model, 'data')
@@ -155,12 +158,17 @@ class OnlineLearning():
         self.pinv_B = np.linalg.pinv(self.B)
     
     def kalman_filter_initialization(self, mode: str,
+                                     location: str,
                                      PARAMS: dict) -> None:
         """Initialize the kalman filter
         """
-        self.kalman_filter = KalmanFilter(mode, self.B, self.Bd, PARAMS, 
-                                          self.sigma_w, self.sigma_y, 
-                                          self.sigma_d, self.sigma_ini)
+        self.kalman_filter = KalmanFilter(mode=mode, B=self.B, Bd=self.Bd, 
+                                          PARAMS=PARAMS, 
+                                          sigma_w=self.sigma_w, 
+                                          sigma_y=self.sigma_y, 
+                                          sigma_d=self.sigma_d, 
+                                          sigma_ini=self.sigma_ini,
+                                          location=location)
 
     def initialization(self) -> torch.nn:
         """Initialize everything:
@@ -182,7 +190,9 @@ class OnlineLearning():
         path = os.path.join(self.root, 'data', 'pretrain_model', 'model.pth')
         self.NN_initialization(path, NN_PARAMS)
 
-        self.kalman_filter_initialization(self.mode, KF_PARAMS)
+        self.kalman_filter_initialization(mode=self.mode,  
+                                          location=self.location,
+                                          PARAMS=KF_PARAMS)
     
     # @nb.jit(nopython=True)
     def get_u(self, y: np.ndarray, d: np.ndarray) -> np.ndarray:
@@ -208,26 +218,26 @@ class OnlineLearning():
         a_tensor = torch.from_numpy(a).to(self.device)
         return a_tensor
     
-    def extract_last_layer_tensor(self, NN: torch.nn) -> Tuple[torch.Tensor, torch.Tensor]:
+    def extract_last_layer(self, NN: torch.nn) -> Tuple[torch.Tensor, torch.Tensor]:
         """Extract the last layer of the neural network
         """
         last_layer = NN.fc[-1]
         return last_layer.weight.data, last_layer.bias.data
 
-    def extract_last_layer_tensor_vec(self, NN: torch.nn) -> torch.Tensor:
+    def extract_last_layer_vec(self, NN: torch.nn) -> torch.Tensor:
         """Extract the last layer and vectorize them
         """
         w, b = self.extract_last_layer_tensor(NN)
         return torch.cat((w.t().flatten(), b.flatten()), dim=0).view(-1, 1)
     
-    def extract_last_layer(self, NN: torch.nn) -> Tuple[Array2D, Array]:
-        """Return the parameters of the last layer, including
-        the weights and bis
-        """
-        w_tensor, b_tensor = self.extract_last_layer_tensor(NN)
-        w = self.tensor2np(w_tensor)
-        b = self.tensor2np(b_tensor)
-        return w, b
+    # def extract_last_layer(self, NN: torch.nn) -> Tuple[Array2D, Array]:
+    #     """Return the parameters of the last layer, including
+    #     the weights and bis
+    #     """
+    #     w_tensor, b_tensor = self.extract_last_layer_tensor(NN)
+    #     w = self.tensor2np(w_tensor)
+    #     b = self.tensor2np(b_tensor)
+    #     return w, b
     
     def extract_output_tensor(self) -> torch.Tensor:
         """
@@ -252,7 +262,7 @@ class OnlineLearning():
         vec: the column vector of the parameters of the last layer,
            including the bias
         """
-        vec = self.extract_last_layer_tensor_vec(NN)
+        vec = self.extract_last_layer_vec(NN)
         phi = self.extract_output_tensor()        
         return phi, vec
 
@@ -292,10 +302,10 @@ class OnlineLearning():
         with open(path_data, 'wb') as file:
             pickle.dump(kwargs, file)
         
-    def get_svd(self, A: Array2D) -> Tuple[Array2D, Array2D, Array2D]:
-        """Do the SVD
+    def get_svd(self, A: torch.Tensor) -> Tuple[torch.Tensor,torch.Tensor,torch.Tensor]:
+        """Do the SVD in pytorch
         """
-        return np.linalg.svd(A)
+        return torch.svd(A)
     
     @staticmethod
     def svd_inference(U: Array2D, S: Array, VT: Array2D) -> Array2D:
@@ -332,11 +342,11 @@ class OnlineLearning():
                         is_scratch: bool=False) -> None:
         """
         """
-        if self.mode is None:
+        if self.mode == 'full_states':
             self._online_learning(nr_iterations, is_scratch)
+        # elif self.mode == 'svd':
+        #     self._online_learning_svd(nr_iterations, is_scratch)
         elif self.mode == 'svd':
-            self._online_learning_svd(nr_iterations, is_scratch)
-        elif self.mode == 'ada-svd':
             self._online_learning_ada_svd(nr_iterations, is_scratch)
 
     def _online_learning(self, nr_iterations: int=100, is_scratch: bool=False) -> None:
@@ -348,7 +358,7 @@ class OnlineLearning():
         """
         self.model.NN.eval()
         yref_marker, path_marker = self.marker_initialization()
-        vec = self.extract_last_layer_tensor_vec(self.model.NN)
+        vec = self.extract_last_layer_vec(self.model.NN)
 
         if is_scratch is True:
             vec = vec*0.0
@@ -404,8 +414,10 @@ class OnlineLearning():
         """Initialize the kalman filter
         """
         w, b = self.extract_last_layer(NN)
-        G = np.hstack((w, b.reshape(-1, 1)))
-        U, S, VT = self.get_svd(G)
+        W = torch.cat((w, b), dim=0)
+        U, S, VT = self.get_svd(W)
+        self.kalman_filter.import_matrix(U=U, VT=VT)
+
         self.kalman_filter.get_Bd_bar(self.Bd, U)
         self.kalman_filter.VT = VT
         return U, S, VT
