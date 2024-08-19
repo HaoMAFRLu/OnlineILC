@@ -14,16 +14,21 @@ class KalmanFilter():
     """
     """
     def __init__(self, mode: str,
-                 B: Array2D, Bd: Array2D, 
+                 B: Array2D, Bd: Array2D,
+                 rolling:int, 
                  PARAMS: dict,
                  sigma_w: float=None,
                  sigma_y: float=None,
                  sigma_d: float=None,
                  sigma_ini: float=None,
                  location: str='local') -> None:
+        
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.mode = mode
         self.location = location
+        self.rolling =rolling
+        self.max_rows = self.rolling*550
+
 
         if sigma_y is None:
             self.sigma_w = PARAMS["sigma_w"]
@@ -36,8 +41,10 @@ class KalmanFilter():
             self.sigma_y = sigma_y
             self.sigma_ini = sigma_ini
         
+        self.decay_R = PARAMS["decay_R"]
         self.dim = PARAMS["dim"]
         self.q = self.dim * 550
+        self.h = min(550, self.dim)
 
         self.d = None
         self.B = B
@@ -49,51 +56,72 @@ class KalmanFilter():
         """Initialize the kalman filter
         """
         if self.mode == 'full_states':
-            self.I = np.eye(self.q)
+            self._initialization(self.q)
         elif self.mode == 'svd':
-            self.A = None
-            self.I = np.eye(min(550, self.dim))
-            if self.dim < 550:
-                self.Z = np.zeros((550-self.dim, self.dim))
-                self.dir = 'v'
-            elif self.dim > 550:
-                self.dir = 'h'
+            self._initialization(self.h)
 
-        self.R_ = np.eye(550) * self.sigma_y
-        self.Q = self.I * self.sigma_d
-        self.P = self.I * self.sigma_ini
+        # if self.mode == 'full_states':
+        #     self.I = np.eye(self.q)
+        # elif self.mode == 'svd':
+        #     self.A = None
+        #     self.I = np.eye(min(550, self.dim))
+        #     if self.dim < 550:
+        #         self.padding = np.zeros((550-self.dim, self.dim))
+        #         self.dir = 'v'
+        #     elif self.dim > 550:
+        #         self.dir = 'h'
 
-        if self.location == 'cluster':
-            self.tensor_intialization()
+        # self.R_ = np.eye(550) * self.sigma_y
+        # self.Q = self.I * self.sigma_d
+        # self.P = self.I * self.sigma_ini
+
+        # self.tensor_intialization()
     
-    def tensor_intialization(self) -> None:
-        """Initialize all the matrices as tensors
+    def move_to_device(self, data: Array) -> torch.Tensor:
+        """Move data to the device
+        """ 
+        return torch.from_numpy(data).to(self.device).float()
+
+    def _initialization(self, l):
+        """initialization
         """
-        self.R_ = torch.from_numpy(self.R_).to(self.device).float()
-        self.I = torch.from_numpy(self.I).to(self.device).float()
-        self.Q = torch.from_numpy(self.Q).to(self.device).float()
-        self.P = torch.from_numpy(self.P).to(self.device).float()
-        self.B = torch.from_numpy(self.B).to(self.device).float()
-        self.Bd = torch.from_numpy(self.Bd).to(self.device).float()
+        # the matrices A and R_ are initialized during training
+        self.A = None
+        self.R_ = None
+        self.yout_tensor = None
+        self.Bu_tensor = None
 
-        self.yout_tensor = torch.empty(550, 1).to(self.device).float()
-        self.Bu_tensor = torch.empty(550, 1).to(self.device).float()
+        self.I = np.eye(l)
+        self.Iq = np.eye(550)
+        self.P = np.zeros((l, l))
+        self.P_pred = np.zeros((l, l))
+        self.Q = np.zeros((l, l))
 
-        self.R = torch.zeros_like(self.R_).to(self.device).float()
-        self.d = torch.empty(self.dim*550, 1).to(self.device).float()
-        self.K = torch.empty(self.dim*550, 550).to(self.device).float()
-        self.d_pred = torch.empty(self.dim*550, 1).to(self.device).float()
-        self.P_pred = torch.zeros_like(self.P).to(self.device).float()
-        self.z = torch.empty(550, 1).to(self.device).float()
-        self.A = torch.empty(550, self.dim*550).to(self.device).float()
+        if self.dim < 550:
+            self.padding = np.zeros((550-self.dim, self.dim))
+            self.dir = 'v'
+        elif self.dim >= 550:
+            self.padding = None
+            self.dir = 'h'
 
-    def update_covariance(self, dim: int, **kwargs) -> None:
-        """Update the covariance matrices
+        self.A_tmp = np.zeros((550, l))
+        self.d_pred = np.zeros((l, 1))
+        self.ini_tensor()
+    
+    def ini_tensor(self):
         """
-        if dim > 550:
-            self.R_ = fcs.diagonal_concatenate(self.R_*1.7, 
-                                               np.eye(550)*self.sigma_y, 
-                                               kwargs["max_rows"])
+        """
+        if self.padding is not None:
+            self.padding = self.move_to_device(self.padding)
+        self.A_tmp = self.move_to_device(self.A_tmp)
+        self.Iq = self.move_to_device(self.Iq)
+        self.I = self.move_to_device(self.I)
+        self.d_pred = self.move_to_device(self.d_pred)
+        self.P = self.move_to_device(self.P)
+        self.P_pred = self.move_to_device(self.P_pred)
+        self.Q = self.move_to_device(self.Q)
+        self.B = self.move_to_device(self.B)
+        self.Bd = self.move_to_device(self.Bd)
 
     def import_d(self, d: Array2D) -> None:
         """Import the initial value of the disturbance
@@ -105,61 +133,114 @@ class KalmanFilter():
         if isinstance(d, np.ndarray):
             self.d = d.copy()
         elif isinstance(d, torch.Tensor):
-            self.d.copy_(d)
+            self.d.copy_(d.view(-1, 1))
 
     def add_one(self, phi: Array) -> Array:
         """Add element one at the end
         """
         return np.hstack([phi.flatten(), 1])
 
+    # @staticmethod
+    # def get_v(VT: Array2D, phi: Array) -> Array:
+    #     """Return v
+    #     """
+    #     return VT@phi.reshape(-1, 1)
+
     @staticmethod
-    def get_v(VT: Array2D, phi: Array) -> Array:
+    def get_v(VT: torch.Tensor, phi: torch.Tensor) -> torch.Tensor:
         """Return v
         """
-        return VT@phi.reshape(-1, 1)
-        
-    def get_A(self, phi, **kwargs) -> None:
+        return torch.matmul(VT, phi.view(-1, 1))
+    
+    def _update_A(self):
+        """Update the matrix A
+        """
+        if self.A is None:
+            self.A = self.A_tmp.clone()
+        else:
+            original_rows = self.A.shape[0]
+            new_rows = self.A_tmp.shape[0]
+            total_rows = original_rows + new_rows
+            if total_rows > self.rolling*new_rows:
+                self.A.copy_(torch.vstack((self.A[new_rows:, :], self.A_tmp)))
+            else:
+                self.A = torch.vstack((self.A, self.A_tmp))
+    
+    def _update_R_(self):
+        """Update the matrix R_
+        """
+        if self.R_ is None:
+            self.R_ = self.Iq*self.sigma_y
+        else:
+            original_rows = self.R_.shape[0]
+            new_rows = 550
+            total_rows = original_rows + new_rows
+            if total_rows > self.rolling*new_rows:
+                self.R_.copy_(torch.block_diag(self.R_[new_rows:, new_rows:]*self.decay_R, self.Iq*self.sigma_y))
+            else:
+                self.R_= torch.block_diag(self.R_*self.decay_R, self.Iq*self.sigma_y)
+
+    # def _update_P(self):
+    #     """Update the matrix P and Q
+    #     """
+    #     if self.P is None:
+    #         self.P = self.I*self.sigma_ini
+    #         self.Q = self.I*self.sigma_d
+    #     else:
+    #         original_rows = self.P.shape[0]
+    #         new_rows = min(self.dim, 550)
+    #         total_rows = original_rows + new_rows
+    #         if total_rows > self.rolling*new_rows:
+    #             self.P.copy_(torch.block_diag(self.P[new_rows:, new_rows:], self.P[-new_rows:, -new_rows:]))
+    #         else:
+    #             self.P = torch.block_diag(self.P, self.P[-new_rows:, -new_rows:])
+    #             self.Q = torch.block_diag(self.Q, self.I*self.sigma_d)
+
+    def update_matrix(self):
+        """Update A, R_ and P in the svd mode
+        """
+        self._update_A()
+        self._update_R_()
+        # self._update_P()
+
+    def get_A(self, phi: torch.Tensor) -> None:
         """Get the dynamic matrix A
         
         parameters:
         -----------
         phi: the output of the last second layer
-
-        TODO: need two versions
         """
-        if isinstance(phi, np.ndarray):
-            phi_bar = self.add_one(phi)
-        elif isinstance(phi, torch.Tensor):
-            new_element = torch.tensor([1]).to(self.device)
-            phi_bar = torch.cat((phi.flatten(), new_element))
+        new_element = torch.tensor([1]).to(self.device).float()
+        phi_bar = torch.cat((phi.flatten(), new_element))
         
-        if self.mode is None:            
-            # self.A = np.kron(phi_bar, self.Bd)
-            self.A.copy_(torch.kron(phi_bar.view(1, -1), self.Bd.contiguous())/1000.0)
+        if self.mode == 'full_states':            
+            self.A_tmp.copy_(torch.kron(phi_bar.view(1, -1), self.Bd.contiguous())/1000.0)
 
         elif self.mode == 'svd':
             v = self.get_v(self.VT, phi_bar)
             if self.dir == 'v':
-                self.A = self.Bd_bar@np.vstack((np.diag(v.flatten()), self.Z))/1000.0
+                self.A_tmp.copy_(torch.matmul(self.Bd_bar,torch.vstack((torch.diag(v.flatten()), self.padding)))/1000.0)
             elif self.dir == 'h':
-                self.A = self.Bd_bar@np.diag(v.flatten()[:550])/1000.0
-        elif self.mode == 'ada-svd':
-            v = self.get_v(self.VT, phi_bar)
-            if self.dir == 'v':
-                cur_A = self.Bd_bar@np.vstack((np.diag(v.flatten()), self.Z))/1000.0
-            elif self.dir == 'h':
-                cur_A = self.Bd_bar@np.diag(v.flatten()[:550])/1000.0
-            self.A = fcs.adjust_matrix(self.A, cur_A, kwargs["max_rows"])
-            self.update_covariance(self.A.shape[0], max_rows=kwargs["max_rows"])
+                self.A_tmp.copy_(torch.matmul(self.Bd_bar, torch.diag(v.flatten()[:550]))/1000.0)
+        
+        self.update_matrix()
 
+    def import_matrix(self, **kwargs):
+        """Import the matrix ()
+        """
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
+    # def get_Bd_bar(self) -> None:
+    #     """Return Bd_bar
+    #     """
+    #     
+    #     self.Bd_bar = self.Bd@self.U
+    
     def get_Bd_bar(self) -> None:
         """Return Bd_bar
         """
-        if self.location == 'local':
-            self.Bd_bar = self.Bd@self.U
-        elif self.location == 'cluster':
-            pass
+        self.Bd_bar = torch.matmul(self.Bd, self.U)
 
     def _estimate_numpy(self, yout: Array2D, Bu: Array2D) -> Array2D:
         """Numpy version
@@ -219,55 +300,66 @@ class KalmanFilter():
             return P+Q
         
         def get_K(P, A, R):
-            # PAT = torch.matmul(P, A.t())
-            # APAT = torch.matmul(A, PAT)
-            # inv_APATR = torch.inverse(APAT+R)
-            # return torch.matmul(PAT, inv_APATR)
             with torch.no_grad():
                 return torch.matmul(torch.matmul(P, A.t()), torch.inverse(torch.matmul(A, torch.matmul(P, A.t())) + R))
         
         def update_d(d, K, z, A):
-            # Ad = torch.matmul(A, d)
-            # zAd = z - Ad
-            # return d + torch.matmul(K, zAd)
             with torch.no_grad():
                 return d + torch.matmul(K, z - torch.matmul(A, d))
     
         def get_R(A, R_, sigma_w):
-            # AAT = torch.matmul(A, A.t())*sigma_w
-            # return AAT + R_
             with torch.no_grad():
                 return torch.matmul(A, A.t()) * sigma_w + R_
 
         def update_P(I, K, A, P, R):
-            # KA = torch.matmul(K, A)
-            # I_KA = I - KA
-            # KR = torch.matmul(K, R)
-            # KRT = torch.matmul(KR, K.t())
-            # I_KAP = torch.matmul(I_KA, P)
-            # return torch.matmul(I_KAP, I_KA.t()) + KRT
             with torch.no_grad():
                 return torch.matmul(torch.matmul(I - torch.matmul(K, A), P), (I - torch.matmul(K, A)).t()) + torch.matmul(torch.matmul(K, R), K.t())
         
-        self.R.copy_(get_R(self.A, self.R_, self.sigma_w))
-        self.z.copy_(get_difference(yout, Bu))
-        self.d_pred.copy_(self.d)
-        
-        self.P_pred.copy_(get_P_prediction(self.P, self.Q))
-
+        # two versions
         t = time.time()
-        self.K.copy_(get_K(self.P_pred, self.A, self.R))
-        t_k = time.time() - t
-        
+        if self.is_rolling is True:
+            self.R.copy_(get_R(self.A, self.R_, self.sigma_w))
+            self.z.copy_(get_difference(yout, Bu))
+            self.P_pred.copy_(get_P_prediction(self.P, self.Q))
+            self.K.copy_(get_K(self.P_pred, self.A, self.R))
+        else:
+            self.R = get_R(self.A, self.R_, self.sigma_w)
+            self.z = get_difference(yout, Bu)
+            self.P_pred.copy_(get_P_prediction(self.P, self.Q))
+            self.K = get_K(self.P_pred, self.A, self.R)
+        tk = time.time() - t
+
+        self.d_pred.copy_(self.d)
         t = time.time()
         self.d.copy_(update_d(self.d_pred, self.K, self.z, self.A))
-        t_d = time.time() - t
+        td = time.time() - t
 
         t = time.time()
         self.P.copy_(update_P(self.I, self.K, self.A, self.P_pred, self.R))
-        t_p = time.time() - t
+        tp = time.time() - t
 
-        return self.d, t_k, t_d, t_p
+        return self.d, tk, td, tp
+
+    def update_inputs(self, yout: Array2D, Bu: Array2D) -> None:
+        """
+        """
+        if self.yout_tensor is None:
+            self.is_rolling = False
+            self.yout_tensor = self.move_to_device(yout)
+            self.Bu_tensor = self.move_to_device(Bu)
+        else: 
+            original_rows = self.yout_tensor.shape[0]
+            new_rows = yout.shape[0]
+            total_rows = original_rows + new_rows
+        
+            if total_rows > self.rolling*new_rows:
+                self.is_rolling = True
+                self.yout_tensor.copy_ (torch.vstack((self.yout_tensor[new_rows:, :], self.move_to_device(yout))))           
+                self.Bu_tensor.copy_(torch.vstack((self.Bu_tensor[new_rows:, :], self.move_to_device(Bu))))           
+            else:
+                self.is_rolling = False
+                self.yout_tensor = torch.vstack((self.yout_tensor, self.move_to_device(yout)))          
+                self.Bu_tensor = torch.vstack((self.Bu_tensor, self.move_to_device(Bu)))
 
     def estimate(self, yout: Array, Bu: Array) -> Array:
         """Estimate the states
@@ -277,12 +369,8 @@ class KalmanFilter():
         yout: output of the underlying system
         Bu: B*u, u is the input of the system
         """
-        if self.mode is None:
-            self.yout_tensor.copy_(torch.from_numpy(yout).to(self.device).float())
-            self.Bu_tensor.copy_(torch.from_numpy(Bu).to(self.device).float())
-            return self._estimate_tensor(self.yout_tensor, self.Bu_tensor)
-        else:
-            return self._estimate_numpy(yout, Bu)
-
+        self.update_inputs(yout, Bu)
+        return self._estimate_tensor(self.yout_tensor, self.Bu_tensor)
+        
 
         

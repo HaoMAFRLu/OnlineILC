@@ -27,8 +27,8 @@ def test():
     random.seed(9527)
     torch.manual_seed(9527)
 
-    online_learning = OnlineLearning(mode='svd', 
-                                     rolling=2, 
+    online_learning = OnlineLearning(mode='full_states', 
+                                     rolling=1, 
                                      location='local')
     online_learning.online_learning(5000, is_scratch=False)
 

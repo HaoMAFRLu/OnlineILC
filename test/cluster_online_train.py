@@ -54,11 +54,15 @@ def test():
     folder_name = str(args.sigma_w)+'_'+str(args.sigma_y)+'_'+str(args.sigma_d)+'_'+str(args.sigma_ini)
 
     print(folder_name)
-    online_learning = OnlineLearning(folder_name=folder_name,
+    online_learning = OnlineLearning(mode='full_states',
+                                     rolling=1,
+                                     location='cluster',
+                                     folder_name=folder_name,
                                      sigma_w=args.sigma_w,
                                      sigma_y=args.sigma_y,
                                      sigma_d=args.sigma_d,
                                      sigma_ini=args.sigma_ini)
+    
     online_learning.online_learning(5000, is_scratch=False)
 
 if __name__ == '__main__':

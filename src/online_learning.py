@@ -157,18 +157,16 @@ class OnlineLearning():
         self.inv_B = np.linalg.inv(self.B)
         self.pinv_B = np.linalg.pinv(self.B)
     
-    def kalman_filter_initialization(self, mode: str,
-                                     location: str,
-                                     PARAMS: dict) -> None:
+    def kalman_filter_initialization(self, PARAMS: dict) -> None:
         """Initialize the kalman filter
         """
-        self.kalman_filter = KalmanFilter(mode=mode, B=self.B, Bd=self.Bd, 
-                                          PARAMS=PARAMS, 
+        self.kalman_filter = KalmanFilter(mode=self.mode, B=self.B, Bd=self.Bd, 
+                                          PARAMS=PARAMS, rolling=self.rolling, 
                                           sigma_w=self.sigma_w, 
                                           sigma_y=self.sigma_y, 
                                           sigma_d=self.sigma_d, 
                                           sigma_ini=self.sigma_ini,
-                                          location=location)
+                                          location=self.location)
 
     def initialization(self) -> torch.nn:
         """Initialize everything:
@@ -190,9 +188,7 @@ class OnlineLearning():
         path = os.path.join(self.root, 'data', 'pretrain_model', 'model.pth')
         self.NN_initialization(path, NN_PARAMS)
 
-        self.kalman_filter_initialization(mode=self.mode,  
-                                          location=self.location,
-                                          PARAMS=KF_PARAMS)
+        self.kalman_filter_initialization(PARAMS=KF_PARAMS)
     
     # @nb.jit(nopython=True)
     def get_u(self, y: np.ndarray, d: np.ndarray) -> np.ndarray:
@@ -227,7 +223,7 @@ class OnlineLearning():
     def extract_last_layer_vec(self, NN: torch.nn) -> torch.Tensor:
         """Extract the last layer and vectorize them
         """
-        w, b = self.extract_last_layer_tensor(NN)
+        w, b = self.extract_last_layer(NN)
         return torch.cat((w.t().flatten(), b.flatten()), dim=0).view(-1, 1)
     
     # def extract_last_layer(self, NN: torch.nn) -> Tuple[Array2D, Array]:
@@ -239,15 +235,15 @@ class OnlineLearning():
     #     b = self.tensor2np(b_tensor)
     #     return w, b
     
-    def extract_output_tensor(self) -> torch.Tensor:
+    def extract_output(self) -> torch.Tensor:
         """
         """
         return second_linear_output[-1]
 
-    def extract_output(self) -> Array:
-        """Extract the ouput of the last second layer
-        """
-        return self.tensor2np(self.extract_output_tensor())
+    # def extract_output(self) -> Array:
+    #     """Extract the ouput of the last second layer
+    #     """
+    #     return self.tensor2np(self.extract_output_tensor())
 
     def extract_NN_info(self, NN: torch.nn) -> Tuple[Array, Array]:
         """Extract the infomation of the neural network
@@ -263,7 +259,7 @@ class OnlineLearning():
            including the bias
         """
         vec = self.extract_last_layer_vec(NN)
-        phi = self.extract_output_tensor()        
+        phi = self.extract_output()        
         return phi, vec
 
     def _recover_last_layer(self, value: torch.Tensor, num: int) -> None:
@@ -305,21 +301,20 @@ class OnlineLearning():
     def get_svd(self, A: torch.Tensor) -> Tuple[torch.Tensor,torch.Tensor,torch.Tensor]:
         """Do the SVD in pytorch
         """
-        return torch.svd(A)
+        return torch.linalg.svd(A)
     
-    @staticmethod
-    def svd_inference(U: Array2D, S: Array, VT: Array2D) -> Array2D:
+    def svd_inference(self, U: Array2D, S: Array, VT: Array2D) -> Array2D:
         """Return the original matrix
         """
         l = U.shape[0]
         r = VT.shape[0]
         if l>r:
-            I = np.zeros((l-r, r))
-            K = np.vstack((np.diag(S.flatten()), I))
+            I = torch.zeros((l-r, r)).to(self.device).float()
+            K = torch.vstack((torch.diag(S.flatten()), I))
         elif l<r:
-            I = np.zeros((l, r-l))
-            K = np.hstack((np.diag(S.flatten()), I))
-        return U@K@VT
+            I = torch.zeros((l, r-l)).to(self.device).float()
+            K = torch.hstack((np.diag(S), I))
+        return torch.matmul(U, torch.matmul(K, VT))
     
     def _get_d(self, yref: Array) -> Array:
         """
@@ -344,10 +339,8 @@ class OnlineLearning():
         """
         if self.mode == 'full_states':
             self._online_learning(nr_iterations, is_scratch)
-        # elif self.mode == 'svd':
-        #     self._online_learning_svd(nr_iterations, is_scratch)
         elif self.mode == 'svd':
-            self._online_learning_ada_svd(nr_iterations, is_scratch)
+            self._online_learning_svd(nr_iterations, is_scratch)
 
     def _online_learning(self, nr_iterations: int=100, is_scratch: bool=False) -> None:
         """Online learning.
@@ -363,7 +356,7 @@ class OnlineLearning():
         if is_scratch is True:
             vec = vec*0.0
 
-        self.kalman_filter.import_d(vec)
+        self.kalman_filter.import_matrix(d=vec.view(-1, 1))
 
         for i in range(nr_iterations):
             tt = time.time()
@@ -414,12 +407,10 @@ class OnlineLearning():
         """Initialize the kalman filter
         """
         w, b = self.extract_last_layer(NN)
-        W = torch.cat((w, b), dim=0)
+        W = torch.cat((w, b.view(-1, 1)), dim=1)
         U, S, VT = self.get_svd(W)
         self.kalman_filter.import_matrix(U=U, VT=VT)
-
-        self.kalman_filter.get_Bd_bar(self.Bd, U)
-        self.kalman_filter.VT = VT
+        self.kalman_filter.get_Bd_bar()
         return U, S, VT
 
     def marker_initialization(self) -> Tuple[Array2D, Path]:
@@ -452,104 +443,29 @@ class OnlineLearning():
             pickle.dump(u, file)
             pickle.dump(loss, file)
 
-    def _online_learning_ada_svd(self, nr_iterations: int=100,
-                                 is_scratch: bool=False,
-                                 nr_ada: int=5) -> None:
-        """
-        """
-        self.model.NN.eval()
-        U, S, VT = self.kf_initialization(self.model.NN)
-
-        if is_scratch is True:
-            S = S*0.0
-    
-        yref_marker, path_marker = self.marker_initialization()
-        yout_ada = None
-        Bu_ada = None
-
-        for i in range(nr_iterations):
-            tt = time.time()
-            self.NN_update(U, S, VT)
-
-            if i%self.nr_marker_interval == 0:
-                self.run_marker_step(yref_marker, path_marker)
-            
-            yref, _ = self.traj.get_traj()
-            t1 = time.time()
-            yout, d, u, loss = self._rum_sim(yref)
-            tsim = time.time() - t1
-            phi = self.extract_output(self.model.NN)  # get the output of the last second layer
-            
-            if self.kalman_filter.d is None:
-                self.kalman_filter.import_d(S.reshape(-1, 1))
-
-            yout_ada = fcs.adjust_matrix(yout_ada, yout.reshape(-1, 1), nr_ada*550)
-            Bu_ada = fcs.adjust_matrix(Bu_ada, self.B@u.reshape(-1, 1), nr_ada*550)
-
-            t1 = time.time()
-            self.kalman_filter.get_A(phi, max_rows=nr_ada*550)
-            S, tk, td, tp = self.kalman_filter.estimate(yout_ada, Bu_ada)      
-            t2 = time.time()
-
-            ttotal = time.time() - tt
-
-            self.total_loss += loss
-            fcs.print_info(
-                Epoch=[str(i+1)+'/'+str(nr_iterations)],
-                Loss=[loss],
-                AvgLoss=[self.total_loss/(i+1)],
-                Ttotal = [ttotal],
-                Tsim = [tsim],
-                Tk=[tk],
-                Td=[td],
-                Tp=[tp]
-            )
-
-            if (i+1) % self.nr_data_interval == 0:
-                self.save_data(i, 
-                               hidden_states=S,
-                               u=u,
-                               yref=yref,
-                               d=d,
-                               yout=yout,
-                               loss=loss)
-            if (i+1) % self.nr_interval == 0:
-                self.save_checkpoint(i+1)
-
-    def NN_update(self, U: Array2D, S: Array, VT: Array2D) -> None:
-        """Update the last layer of the neural network
-        """
-        G = self.svd_inference(U, S, VT)
-        vec = fcs.get_flatten(G)
-        self.assign_last_layer(self.model.NN, vec)
-
     def _online_learning_svd(self, nr_iterations: int=100,
-                             is_scratch: bool=False) -> None:
+                                 is_scratch: bool=False) -> None:
         """
         """
         self.model.NN.eval()
-        U, S, VT = self.kf_initialization(self.model.NN)
-        
+        self.U, S, self.VT = self.kf_initialization(self.model.NN)
         if is_scratch is True:
             S = S*0.0
-       
+        self.kalman_filter.import_matrix(d=S.view(-1, 1))
         yref_marker, path_marker = self.marker_initialization()
+
         for i in range(nr_iterations):
-            self.NN_update(U, S, VT)
+            tt = time.time()
+            self.NN_update(S)
 
             if i%self.nr_marker_interval == 0:
                 self.run_marker_step(yref_marker, path_marker)
-
-            tt = time.time()
+            
             yref, _ = self.traj.get_traj()
             t1 = time.time()
             yout, d, u, loss = self._rum_sim(yref)
             tsim = time.time() - t1
-
-            phi = self.extract_output(self.model.NN)  # get the output of the last second layer
-            
-            if self.kalman_filter.d is None:
-                self.kalman_filter.import_d(S.reshape(-1, 1))
+            phi = self.extract_output()  # get the output of the last second layer
 
             t1 = time.time()
             self.kalman_filter.get_A(phi)
@@ -581,5 +497,13 @@ class OnlineLearning():
                 
             if (i+1) % self.nr_interval == 0:
                 self.save_checkpoint(i+1)
+
+    def NN_update(self, S: torch.Tensor) -> None:
+        """Update the last layer of the neural network
+        """
+        W = self.svd_inference(self.U, S, self.VT)
+        vec = W.t().reshape(-1, 1)
+        self.assign_last_layer(self.model.NN, vec)
+
 
         

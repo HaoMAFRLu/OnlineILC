@@ -82,6 +82,7 @@ class KF_PARAMS:
     sigma_ini: float
     sigma_y: float
     sigma_d: float
+    decay_R: float
     dim: int
 
 dataclass_map = {
