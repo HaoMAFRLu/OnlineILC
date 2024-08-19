@@ -55,7 +55,7 @@ def test():
 
     print(folder_name)
     online_learning = OnlineLearning(mode='full_states',
-                                     rolling=1,
+                                     rolling=50,
                                      location='cluster',
                                      folder_name=folder_name,
                                      sigma_w=args.sigma_w,

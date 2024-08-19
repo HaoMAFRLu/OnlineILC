@@ -54,7 +54,7 @@ class OnlineLearning():
             current_time = datetime.now()
             folder_name = current_time.strftime('%Y%m%d_%H%M%S')
         
-        self.path_model = os.path.join(parent, 'data', 'online_training', folder_name)
+        self.path_model = os.path.join(parent, 'data', 'online_svd_rolling', folder_name)
         self.path_data = os.path.join(self.path_model, 'data')
 
         fcs.mkdir(self.path_model)
