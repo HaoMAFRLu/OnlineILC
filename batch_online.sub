@@ -1,8 +1,8 @@
 executable = /lustre/home/hma2/projects/OnlineILC/myenv/bin/python
 arguments = -u test/cluster_online_train.py --sigma-w $(arg1) --sigma-y $(arg2) --sigma-d $(arg3) --sigma-ini $(arg4)
-error = jobs_svd/task$(Process).err
-output = jobs_svd/task$(Process).out
-log = jobs_svd/task$(Process).log
+error = jobs/task$(Process).err
+output = jobs/task$(Process).out
+log = jobs/task$(Process).log
 request_gpus = 1
 request_memory = 65536
 request_cpus = 1

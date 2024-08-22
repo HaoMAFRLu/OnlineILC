@@ -93,9 +93,9 @@ class KalmanFilter():
 
         self.I = np.eye(l)
         self.Iq = np.eye(550)
-        self.P = np.zeros((l, l))
+        self.P = np.eye(l)*self.sigma_ini
         self.P_pred = np.zeros((l, l))
-        self.Q = np.zeros((l, l))
+        self.Q = np.eye(l)*self.sigma_d
 
         if self.dim < 550:
             self.padding = np.zeros((550-self.dim, self.dim))
