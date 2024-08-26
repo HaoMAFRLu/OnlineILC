@@ -53,7 +53,7 @@ def test():
 
     folder_name = str(args.sigma_w)+'_'+str(args.sigma_y)+'_'+str(args.sigma_d)+'_'+str(args.sigma_ini)
 
-    online_learning = OnlineLearning(mode='full_states',
+    online_learning = OnlineLearning(mode='svd',
                                      rolling=1,
                                      location='cluster',
                                      folder_name=folder_name,

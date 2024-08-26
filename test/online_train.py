@@ -30,7 +30,7 @@ def test():
     online_learning = OnlineLearning(mode='svd', 
                                      rolling=1, 
                                      location='local')
-    online_learning.online_learning(5000, is_scratch=False)
+    online_learning.online_learning(5000, is_scratch=True)
 
 if __name__ == '__main__':
     test()
