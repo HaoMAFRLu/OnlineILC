@@ -9,7 +9,7 @@
     "is_centerization": false,
     "input_scale": 1,
     "output_scale": 1000,
-    "k": 0.9,
+    "k": 0.1,
     "batch_size": 50,
     "input_name": "yref",
     "output_name": "d",
@@ -26,7 +26,7 @@
     "decay_R": 1.1,
     "sigma_y": 1e-3,
     "sigma_d": 1e-7,
-    "sigma_ini": 1e-7,
+    "sigma_ini": 1e-3,
     "sigma_w": 0.0,
-    "dim": 129
+    "dim": 65
 }
