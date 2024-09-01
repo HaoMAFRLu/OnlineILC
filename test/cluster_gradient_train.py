@@ -27,10 +27,23 @@ def test():
     random.seed(9527)
     torch.manual_seed(9527)
 
-    online_learning = OnlineLearning(mode='svd_gradient', 
-                                     rolling=1, 
-                                     location='local')
-    online_learning.online_learning(5000, is_scratch=True)
+    parser = argparse.ArgumentParser(description="Online Training")
+    parser.add_argument('--alpha', type=float, required=True, help="Alpha")
+    parser.add_argument('--epsilon', type=float, required=True, help="Epsilon")
+    parser.add_argument('--eta', type=float, required=True, help="Eta")
+    args = parser.parse_args()
+
+    folder_name = str(args.alpha)+'_'+str(args.epsilon)+'_'+str(args.eta)
+
+    online_learning = OnlineLearning(mode='svd_gradient',
+                                     rolling=1,
+                                     location='cluster',
+                                     folder_name=folder_name)
+    
+    online_learning.online_learning(5000, is_scratch=True, 
+                                    alpha=args.alpha,
+                                    epsilon=args.epsilon,
+                                    eta=args.eta)
 
 if __name__ == '__main__':
     test()

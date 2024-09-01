@@ -41,7 +41,7 @@ def test():
     t_start = time.time()
     # PRE_TRAIN.reconstruct_NN()
     # PRE_TRAIN.learn(num_epochs=args.num_epoch)
-    PRE_TRAIN.learn(num_epochs=500)
+    PRE_TRAIN.learn(num_epochs=5000)
    
     t_end = time.time()
     total_time = t_end - t_start

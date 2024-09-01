@@ -54,7 +54,7 @@ class OnlineLearning():
             current_time = datetime.now()
             folder_name = current_time.strftime('%Y%m%d_%H%M%S')
         
-        self.path_model = os.path.join(parent, 'data', 'online_training', folder_name)
+        self.path_model = os.path.join(parent, 'data', 'online_gradient_original_distribution', folder_name)
         self.path_data = os.path.join(self.path_model, 'data')
 
         fcs.mkdir(self.path_model)
@@ -334,7 +334,8 @@ class OnlineLearning():
         return yout, d, u, loss
 
     def online_learning(self, nr_iterations: int=100,
-                        is_scratch: bool=False) -> None:
+                        is_scratch: bool=False,
+                        **kwargs) -> None:
         """
         """
         if self.mode == 'full_states':
@@ -342,7 +343,10 @@ class OnlineLearning():
         elif self.mode == 'svd':
             self._online_learning_svd(nr_iterations, is_scratch)
         elif self.mode == 'svd_gradient':
-            self._online_learning_gradient(nr_iterations, is_scratch)
+            self._online_learning_gradient(nr_iterations, is_scratch,
+                                           alpha=kwargs["alpha"],
+                                           epsilon=kwargs["epsilon"],
+                                           eta=kwargs["eta"])
 
     def _online_learning(self, nr_iterations: int=100, is_scratch: bool=False) -> None:
         """Online learning.
@@ -468,8 +472,8 @@ class OnlineLearning():
     def _online_learning_gradient(self, nr_iterations: int=100,
                                   is_scratch: bool=False,
                                   alpha: float=0.1,
-                                  epsilon: float=1,
-                                  eta: float=0.001):
+                                  epsilon: float=0.1,
+                                  eta: float=0.3):
         
         """Online learning using quasi newton method
         """
@@ -513,8 +517,9 @@ class OnlineLearning():
             L = self.get_L(par_pi_par_omega)
             Lambda = self.get_Lambda(L, par_pi_par_omega, alpha, epsilon)
             A = self.update_A(A, Lambda)
-            # delta_S = eta*np.linalg.inv(A/(i+1))@L.T@(yout.reshape(-1, 1) - yref[0, 1:551].reshape(-1, 1))
-            delta_S = eta*L.T@(yout.reshape(-1, 1) - yref[0, 1:551].reshape(-1, 1))
+            gradient = L.T@(yout.reshape(-1, 1) - yref[0, 1:551].reshape(-1, 1))
+            delta_S = eta*np.linalg.inv(A/(i+1))@gradient
+            # delta_S = eta*L.T@(yout.reshape(-1, 1) - yref[0, 1:551].reshape(-1, 1))
             S = S - torch.from_numpy(delta_S).to(S.dtype).to('cuda:0').view(S.shape)
 
             ttotal = time.time() - tt
@@ -537,11 +542,11 @@ class OnlineLearning():
                                yref=yref,
                                d=d,
                                yout=yout,
-                               loss=loss)
+                               loss=loss,
+                               gradient=gradient.flatten())
                 
             if (i+1) % self.nr_interval == 0:
                 self.save_checkpoint(i+1)
-
 
     def _online_learning_svd(self, nr_iterations: int=100,
                                  is_scratch: bool=False) -> None:
@@ -549,6 +554,7 @@ class OnlineLearning():
         """
         self.model.NN.eval()
         self.U, S, self.VT = self.kf_initialization(self.model.NN)
+        
         if is_scratch is True:
             S = S*0.0
 
@@ -564,7 +570,6 @@ class OnlineLearning():
             self.dir = 'h'
 
         self.Bd_bar = self.Bd@self.U_asnp
-        gradient_sum = []
 
         self.kalman_filter.import_matrix(d=S.view(-1, 1))
         yref_marker, path_marker = self.marker_initialization()
@@ -589,14 +594,8 @@ class OnlineLearning():
 
             par_pi_par_omega = self.get_par_pi_par_omega(phi.detach().cpu().numpy())
             L = self.get_L(par_pi_par_omega)
-            delta_S = L.T@(yout.reshape(-1, 1) - yref[0, 1:551].reshape(-1, 1))
-            gradient_sum.append(delta_S.copy().flatten())
+            gradient = L.T@(yout.reshape(-1, 1) - yref[0, 1:551].reshape(-1, 1))
             
-            if len(gradient_sum) > 100:
-                gradient_sum.pop(0)
-
-            print(sum(gradient_sum))
-
             ttotal = time.time() - tt
 
             self.total_loss += loss
@@ -619,7 +618,7 @@ class OnlineLearning():
                                d=d,
                                yout=yout,
                                loss=loss,
-                               gradient_sum=gradient_sum)
+                               gradient=gradient.flatten())
                 
             if (i+1) % self.nr_interval == 0:
                 self.save_checkpoint(i+1)

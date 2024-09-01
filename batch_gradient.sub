@@ -1,0 +1,9 @@
+executable = /lustre/home/hma2/projects/OnlineILC/myenv/bin/python
+arguments = -u test/cluster_online_train.py --alpha $(arg1) --epsilon $(arg2) --eta $(arg3)
+error = jobs_gradient/task$(Process).err
+output = jobs_gradient/task$(Process).out
+log = jobs_gradient/task$(Process).log
+request_gpus = 1
+request_memory = 65536
+request_cpus = 1
+queue arg1 arg2 arg3 from params_gradient.txt
