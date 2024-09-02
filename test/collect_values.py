@@ -63,7 +63,7 @@ def read_data(file):
 
 def save_variable_data(path, folder):
     subfolder = 'data'
-    variables = ['hidden_states', 'u', 'yref', 'd', 'yout', 'loss', 'gradient_sum']
+    variables = ['hidden_states', 'u', 'yref', 'd', 'yout', 'loss', 'gradient']
     is_exist = [1] * len(variables)
 
     path_folder = os.path.join(path, folder, subfolder)
@@ -107,9 +107,9 @@ def save_variable(path, folder, subfolder):
 
 if __name__ == '__main__':
     root = fcs.get_parent_path(lvl=1)
-    folder1 = 'online_training'
+    folder1 = 'domain_adaptation'
     path = os.path.join(root, 'data', folder1)
-    folders = ['20240830_163521']
+    folders = []
 
     if len(folders) == 0:
         folders = [dir for dir in os.listdir(path) if os.path.isdir(os.path.join(path, dir))]

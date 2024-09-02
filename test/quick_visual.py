@@ -13,8 +13,8 @@ def list_files(directory):
 def test():
     is_save = True
 
-    root = "/home/hao/Desktop/MPI/Online_Convex_Optimization/OnlineILC/data/cluster_fs_0"
-    file = "0.0_0.001_1e-07_0.001"
+    root = "/home/hao/Desktop/MPI/Online_Convex_Optimization/OnlineILC/data/online_gradient_shift_distribution"
+    file = "1.0_0.1_0.1"
     path = os.path.join(root, file)
     path_data = os.path.join(path, 'data')
     path_figure = os.path.join(path, 'figure')

@@ -53,7 +53,7 @@ def test():
 
     folder_name = str(args.sigma_w)+'_'+str(args.sigma_y)+'_'+str(args.sigma_d)+'_'+str(args.sigma_ini)
 
-    online_learning = OnlineLearning(mode='full_states',
+    online_learning = OnlineLearning(mode='svd',
                                      rolling=1,
                                      location='cluster',
                                      folder_name=folder_name,
@@ -62,7 +62,9 @@ def test():
                                      sigma_d=args.sigma_d,
                                      sigma_ini=args.sigma_ini)
     
-    online_learning.online_learning(5000, is_scratch=False)
+    online_learning.online_learning(6000, 
+                                    is_shift_dis=True,
+                                    is_scratch=True)
 
 if __name__ == '__main__':
     test()

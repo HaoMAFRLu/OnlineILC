@@ -31,6 +31,7 @@ class OnlineLearning():
                  location:str='local',
                  rolling: int=1,
                  nr_interval: int=500,
+                 nr_shift_dis: int=2,
                  nr_data_interval: int=1,
                  nr_marker_interval: int=20,
                  folder_name: str=None,
@@ -44,6 +45,7 @@ class OnlineLearning():
         self.location = location
         self.rolling = rolling
         self.nr_interval = nr_interval
+        self.nr_shift_dis = nr_shift_dis
         self.nr_data_interval = nr_data_interval
         self.nr_marker_interval = nr_marker_interval
         self.mode = mode
@@ -54,7 +56,7 @@ class OnlineLearning():
             current_time = datetime.now()
             folder_name = current_time.strftime('%Y%m%d_%H%M%S')
         
-        self.path_model = os.path.join(parent, 'data', 'online_gradient_original_distribution', folder_name)
+        self.path_model = os.path.join(parent, 'data', 'martingale_test', folder_name)
         self.path_data = os.path.join(self.path_model, 'data')
 
         fcs.mkdir(self.path_model)
@@ -139,10 +141,10 @@ class OnlineLearning():
         self.model.NN.load_state_dict(checkpoint['model_state_dict'])
         hook_handle = self.model.NN.fc[2].register_forward_hook(hook)
     
-    def traj_initialization(self) -> None:
+    def traj_initialization(self, distribution: str='original') -> None:
         """Create the class of reference trajectories
         """
-        self.traj = TRAJ()
+        self.traj = TRAJ(distribution)
 
     def load_dynamic_model(self) -> None:
         """Load the dynamic model of the underlying system,
@@ -334,21 +336,33 @@ class OnlineLearning():
         return yout, d, u, loss
 
     def online_learning(self, nr_iterations: int=100,
+                        is_shift_dis: bool=False,
                         is_scratch: bool=False,
                         **kwargs) -> None:
         """
         """
         if self.mode == 'full_states':
-            self._online_learning(nr_iterations, is_scratch)
+            self._online_learning(nr_iterations, is_scratch, is_shift_dis)
         elif self.mode == 'svd':
-            self._online_learning_svd(nr_iterations, is_scratch)
+            self._online_learning_svd(nr_iterations, is_scratch, is_shift_dis)
         elif self.mode == 'svd_gradient':
             self._online_learning_gradient(nr_iterations, is_scratch,
+                                           is_shift_dis,
                                            alpha=kwargs["alpha"],
                                            epsilon=kwargs["epsilon"],
                                            eta=kwargs["eta"])
 
-    def _online_learning(self, nr_iterations: int=100, is_scratch: bool=False) -> None:
+    def shift_distribution(self):
+        """change the distribution
+        """
+        self.traj_initialization('shift')
+        yref_marker, _ = self.traj.get_traj()
+        return yref_marker
+
+
+    def _online_learning(self, nr_iterations: int=100, 
+                         is_scratch: bool=False, 
+                         is_shift_dis: bool=False) -> None:
         """Online learning.
         1. sample a reference trajectory randomly
         2. do the inference using the neural network -> u
@@ -367,6 +381,10 @@ class OnlineLearning():
         for i in range(nr_iterations):
             tt = time.time()
 
+            if (is_shift_dis is True) and (i > self.nr_shift_dis):
+                is_shift_dis = False
+                yref_marker = self.shift_distribution()
+
             self.assign_last_layer(self.model.NN, vec)
 
             if i%self.nr_marker_interval == 0:
@@ -384,6 +402,8 @@ class OnlineLearning():
             vec, tk, td, tp = self.kalman_filter.estimate(yout, self.B@u.reshape(-1, 1))
             t2 = time.time()
 
+            gradient = -self.kalman_filter.A.detach().cpu().numpy().T@(yout.reshape(-1, 1) - yref[0, 1:551].reshape(-1, 1))
+
             ttotal = time.time() - tt
             self.total_loss += loss
             fcs.print_info(
@@ -392,10 +412,7 @@ class OnlineLearning():
                 AvgLoss=[self.total_loss/(i+1)],
                 Umax=[np.max(np.abs(u))],
                 Ttotal = [ttotal],
-                Tsim = [tsim],
-                # Tk=[tk],
-                # Td=[td],
-                # Tp=[tp]
+                Tsim = [tsim]
             )
 
             if (i+1) % self.nr_data_interval == 0:
@@ -404,7 +421,8 @@ class OnlineLearning():
                                yref=yref,
                                d=d,
                                yout=yout,
-                               loss=loss)
+                               loss=loss,
+                               gradient=gradient.flatten())
                 
             if (i+1) % self.nr_interval == 0:
                 self.save_checkpoint(i+1)
@@ -471,10 +489,10 @@ class OnlineLearning():
     
     def _online_learning_gradient(self, nr_iterations: int=100,
                                   is_scratch: bool=False,
+                                  is_shift_dis: bool=False,
                                   alpha: float=0.1,
                                   epsilon: float=0.1,
                                   eta: float=0.3):
-        
         """Online learning using quasi newton method
         """
         self.model.NN.eval()
@@ -502,6 +520,11 @@ class OnlineLearning():
 
         for i in range(nr_iterations):
             tt = time.time()
+            
+            if (is_shift_dis is True) and (i > self.nr_shift_dis):
+                is_shift_dis = False
+                yref_marker = self.shift_distribution()
+
             self.NN_update(S)
 
             if i%self.nr_marker_interval == 0:
@@ -549,7 +572,8 @@ class OnlineLearning():
                 self.save_checkpoint(i+1)
 
     def _online_learning_svd(self, nr_iterations: int=100,
-                                 is_scratch: bool=False) -> None:
+                             is_shift_dis: bool=False,
+                             is_scratch: bool=False) -> None:
         """
         """
         self.model.NN.eval()
@@ -576,6 +600,11 @@ class OnlineLearning():
 
         for i in range(nr_iterations):
             tt = time.time()
+            
+            if (is_shift_dis is True) and (i > self.nr_shift_dis):
+                is_shift_dis = False
+                yref_marker = self.shift_distribution()
+
             self.NN_update(S)
 
             if i%self.nr_marker_interval == 0:

@@ -27,10 +27,12 @@ def test():
     random.seed(9527)
     torch.manual_seed(9527)
 
-    online_learning = OnlineLearning(mode='svd_gradient', 
+    online_learning = OnlineLearning(mode='full_states', 
                                      rolling=1, 
                                      location='local')
-    online_learning.online_learning(5000, is_scratch=True)
+    online_learning.online_learning(6000,
+                                    is_shift_dis=True, 
+                                    is_scratch=True)
 
 if __name__ == '__main__':
     test()

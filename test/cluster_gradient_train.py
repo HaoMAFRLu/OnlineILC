@@ -40,7 +40,8 @@ def test():
                                      location='cluster',
                                      folder_name=folder_name)
     
-    online_learning.online_learning(5000, is_scratch=True, 
+    online_learning.online_learning(6000, is_scratch=True, 
+                                    is_shift_dis=True,
                                     alpha=args.alpha,
                                     epsilon=args.epsilon,
                                     eta=args.eta)
