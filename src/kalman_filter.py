@@ -59,6 +59,8 @@ class KalmanFilter():
             self._initialization(self.q)
         elif self.mode == 'svd':
             self._initialization(self.h)
+        elif self.mode == 'representation':
+            self._initialization(self.h)
 
         # if self.mode == 'full_states':
         #     self.I = np.eye(self.q)
@@ -203,7 +205,7 @@ class KalmanFilter():
         self._update_R_()
         # self._update_P()
 
-    def get_A(self, phi: torch.Tensor) -> None:
+    def get_A(self, phi: torch.Tensor, **kwargs) -> None:
         """Get the dynamic matrix A
         
         parameters:
@@ -212,7 +214,9 @@ class KalmanFilter():
         """
         new_element = torch.tensor([1]).to(self.device).float()
         phi_bar = torch.cat((phi.flatten(), new_element))
-        
+        if 'dphi' in kwargs:
+            phi_bar = phi_bar + kwargs['dphi'].flatten()
+
         if self.mode == 'full_states':            
             self.A_tmp.copy_(torch.kron(phi_bar.view(1, -1), self.Bd.contiguous())/1000.0)
 
@@ -223,7 +227,12 @@ class KalmanFilter():
             elif self.dir == 'h':
                 self.A_tmp.copy_(torch.matmul(self.Bd_bar, torch.diag(v.flatten()[:550]))/1000.0)
         
+        elif self.mode == 'representation':
+            self.A_tmp.copy_(torch.matmul(self.Bd, phi)/1000.0)
+
         self.update_matrix()
+
+    
 
     def import_matrix(self, **kwargs):
         """Import the matrix ()

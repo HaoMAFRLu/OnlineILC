@@ -107,9 +107,9 @@ def save_variable(path, folder, subfolder):
 
 if __name__ == '__main__':
     root = fcs.get_parent_path(lvl=1)
-    folder1 = 'domain_adaptation'
+    folder1 = 'test'
     path = os.path.join(root, 'data', folder1)
-    folders = []
+    folders = ['20240906_144508']
 
     if len(folders) == 0:
         folders = [dir for dir in os.listdir(path) if os.path.isdir(os.path.join(path, dir))]

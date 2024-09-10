@@ -36,7 +36,7 @@ def plot_tikz(trajs_data, trajs_marker, trajs_martingale, path_save,
         for i in range(len(trajs_martingale)):
             traj_martingale = trajs_martingale[i]
             x = [i * 1 for i in range(len(traj_martingale))]
-            ax.plot(x, traj_martingale, linewidth=1.5, linestyle='--')
+            ax.plot(x, traj_martingale, linewidth=1.5, linestyle='-')
     # ax.legend(fontsize=14)
     # tp.save(path_save)
     plt.show()
@@ -44,27 +44,30 @@ def plot_tikz(trajs_data, trajs_marker, trajs_martingale, path_save,
 def average(lst):
     return sum(lst) / len(lst)
 
-def _get_martingale(data, rolling):
+def _get_martingale(data, mode, rolling):
     num = len(data)
     rolling_list = []
     martingale_list = []
     for i in range(num):
         rolling_list.append(data[i])
-        if len(rolling_list) > rolling:
-            rolling_list.pop(0)
+
+        if mode == 'rolling':
+            if len(rolling_list) > rolling:
+                rolling_list.pop(0)
+        
         sum_value = sum(rolling_list)
-        martingale_list.append(np.linalg.norm(sum_value)/len(rolling_list))
+        martingale_list.append(np.linalg.norm(sum_value/len(rolling_list)))
     return martingale_list
 
-def get_martingale(data_list, rolling):
+def get_martingale(data_list, mode, rolling):
     num = len(data_list)
     martingale_list = []
     for i in range(num):
-        martingale_list.append(_get_martingale(data_list[i], rolling))
+        martingale_list.append(_get_martingale(data_list[i], mode, rolling))
     return martingale_list
     
 if __name__ == '__main__':
-    folder1s = ['online_gradient_original_distribution']
+    folder1s = ['martingale_test2']
     folders = ['1.0_0.1_0.1']
 
     root = fcs.get_parent_path(lvl=1)
@@ -93,15 +96,13 @@ if __name__ == '__main__':
 
             with open(path_marker, 'rb') as file:
                 loss = pickle.load(file)
-            
-            print(len(loss))
 
             marker_loss.append(loss)
         else:
             print('No file!')
 
-    martingale_list = get_martingale(gradient_list, 300)
-    path_fig = os.path.join(root, 'figure', 'tikz', 'domain_ada_svd_gradient_loss.tex')
-    plot_tikz(data_loss, marker_loss, martingale_list, path_fig, if_data=False, if_marker=True, if_martingale=True)
+    martingale_list = get_martingale(gradient_list, mode='rolling', rolling=100)
+    path_fig = os.path.join(root, 'figure', 'tikz', 'martingale_gd_shift.tex')
+    plot_tikz(data_loss, marker_loss, martingale_list, path_fig, if_data=True, if_marker=True, if_martingale=True)
 
 

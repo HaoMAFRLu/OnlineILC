@@ -56,7 +56,7 @@ class OnlineLearning():
             current_time = datetime.now()
             folder_name = current_time.strftime('%Y%m%d_%H%M%S')
         
-        self.path_model = os.path.join(parent, 'data', 'martingale_test', folder_name)
+        self.path_model = os.path.join(parent, 'data', 'test', folder_name)
         self.path_data = os.path.join(self.path_model, 'data')
 
         fcs.mkdir(self.path_model)
@@ -344,13 +344,16 @@ class OnlineLearning():
         if self.mode == 'full_states':
             self._online_learning(nr_iterations, is_scratch, is_shift_dis)
         elif self.mode == 'svd':
-            self._online_learning_svd(nr_iterations, is_scratch, is_shift_dis)
+            # self._online_learning_svd(nr_iterations, is_scratch, is_shift_dis)
+            self._online_learning_shift_representation(nr_iterations)
         elif self.mode == 'svd_gradient':
             self._online_learning_gradient(nr_iterations, is_scratch,
                                            is_shift_dis,
                                            alpha=kwargs["alpha"],
                                            epsilon=kwargs["epsilon"],
                                            eta=kwargs["eta"])
+        elif self.mode == 'representation':
+            self._online_learning_representation(nr_iterations, is_shift_dis)
 
     def shift_distribution(self):
         """change the distribution
@@ -358,6 +361,230 @@ class OnlineLearning():
         self.traj_initialization('shift')
         yref_marker, _ = self.traj.get_traj()
         return yref_marker
+
+    def _online_learning_shift_representation(self, nr_iterations: int=100) -> None:
+        """
+        """
+        self.traj = TRAJ('shift')
+        new_element = torch.tensor([1]).to(self.device).float()
+        path = '/home/hao/Desktop/MPI/Online_Convex_Optimization/OnlineILC/data/test/20240906_144508'
+        path_file = os.path.join(path, 'data_hidden_states')
+        with open(path_file, 'rb') as f:
+            dphi_list = pickle.load(f)
+        dphi = dphi_list[-1]
+
+        def _rum_sim(yref: Array2D, W, dphi) -> Tuple:
+            """
+            """
+            y_processed = self.DATA_PROCESS.get_data(raw_inputs=yref[0, 1:])
+            _ = self.model.NN(y_processed.float())
+            phi = self.extract_output() 
+            phi_bar = torch.cat((phi.flatten(), new_element)).view(-1, 1)
+            d = torch.matmul(W, phi_bar+dphi)/1000.0
+            d = d.detach().cpu().numpy()
+            u = self.get_u(yref[0, 1:].reshape(-1 ,1), d.reshape(-1, 1))
+            yout, _ = self.env.one_step(u.flatten())
+            loss = self.get_loss(yout.flatten(), yref[0, 1:].flatten())
+            return yout, d, u, loss, phi_bar
+        
+        def run_marker_step(yref: Array2D, W, dphi, path: Path) -> None:
+            """Evaluate the marker trajectory
+            """
+            self.nr_marker += 1
+            yout, d, u, loss, phi_bar = _rum_sim(yref, W, dphi)
+            self.loss_marker.append(np.round(loss, 4))
+            fcs.print_info(
+            Marker=[str(self.nr_marker)],
+            Loss=[self.loss_marker[-6:]])
+
+            path_marker_file = os.path.join(path, str(self.nr_marker))
+            with open(path_marker_file, 'wb') as file:
+                pickle.dump(yref, file)
+                pickle.dump(yout, file)
+                pickle.dump(d, file)
+                pickle.dump(u, file)
+                pickle.dump(loss, file)
+            
+        def get_L(phi, dphi):
+            phi_bar = fcs.add_one(phi)
+            phi_bar = phi_bar + dphi.flatten()
+
+            v = self.VT_asnp@phi_bar.reshape(-1, 1)
+            if self.dir == 'v':
+                par_pi_par_omega = self.Bd_bar@np.vstack((np.diag(v.flatten()), self.padding))/1000.0
+            elif self.dir == 'h':
+                par_pi_par_omega = self.Bd_bar@np.diag(v.flatten()[:550])/1000.0
+            return -par_pi_par_omega
+
+        self.model.NN.eval()
+        
+        self.U, S, self.VT = self.kf_initialization(self.model.NN)
+
+        self.U_asnp = self.U.cpu().numpy()
+        self.VT_asnp = self.VT.cpu().numpy()
+
+        dim = len(S)
+        if dim < 550:
+            self.padding = np.zeros((550-dim, dim))
+            self.dir = 'v'
+        elif dim >= 550:
+            self.padding = None
+            self.dir = 'h'
+
+        self.Bd_bar = self.Bd@self.U_asnp
+
+        self.kalman_filter.import_matrix(d=S.view(-1, 1))
+        yref_marker, path_marker = self.marker_initialization()
+
+        for i in range(nr_iterations):
+            tt = time.time()
+
+            self.NN_update(S)
+            W = self.svd_inference(self.U, S, self.VT)
+
+            if i%self.nr_marker_interval == 0:
+                run_marker_step(yref_marker, W, dphi, path_marker)
+            
+            yref, _ = self.traj.get_traj()
+            t1 = time.time()
+            yout, d, u, loss, phi_bar = _rum_sim(yref, W, dphi)
+            tsim = time.time() - t1
+            phi = self.extract_output()  # get the output of the last second layer
+
+            t1 = time.time()
+            self.kalman_filter.get_A(phi, dphi=dphi)
+            S, tk, td, tp = self.kalman_filter.estimate(yout, self.B@u.reshape(-1, 1))      
+            t2 = time.time()
+
+            L = get_L(phi.detach().cpu().numpy(), dphi.detach().cpu().numpy())
+            gradient = L.T@(yout.reshape(-1, 1) - yref[0, 1:551].reshape(-1, 1))
+            
+            ttotal = time.time() - tt
+
+            self.total_loss += loss
+            fcs.print_info(
+                Epoch=[str(i+1)+'/'+str(nr_iterations)],
+                Loss=[loss],
+                AvgLoss=[self.total_loss/(i+1)],
+                Ttotal = [ttotal],
+                Tsim = [tsim],
+                Tk=[tk],
+                Td=[td],
+                Tp=[tp]
+            )
+
+            if (i+1) % self.nr_data_interval == 0:
+                self.save_data(i, 
+                               hidden_states=S,
+                               u=u,
+                               yref=yref,
+                               d=d,
+                               yout=yout,
+                               loss=loss,
+                               gradient=gradient.flatten())
+                
+            if (i+1) % self.nr_interval == 0:
+                self.save_checkpoint(i+1)
+
+
+
+    def _online_learning_representation(self, nr_iterations: int=100,
+                             is_shift_dis: bool=False) -> None:
+        """
+        """
+        self.traj = TRAJ('shift')
+        new_element = torch.tensor([1]).to(self.device).float()
+
+        def _rum_sim(yref: Array2D, W, dphi) -> Tuple:
+            """
+            """
+            y_processed = self.DATA_PROCESS.get_data(raw_inputs=yref[0, 1:])
+            _ = self.model.NN(y_processed.float())
+            phi = self.extract_output() 
+            phi_bar = torch.cat((phi.flatten(), new_element)).view(-1, 1)
+            d = torch.matmul(W, phi_bar+dphi)/1000.0
+            d = d.detach().cpu().numpy()
+            u = self.get_u(yref[0, 1:].reshape(-1 ,1), d.reshape(-1, 1))
+            yout, _ = self.env.one_step(u.flatten())
+            loss = self.get_loss(yout.flatten(), yref[0, 1:].flatten())
+            return yout, d, u, loss, phi_bar
+        
+        def run_marker_step(yref: Array2D, W, dphi, path: Path) -> None:
+            """Evaluate the marker trajectory
+            """
+            self.nr_marker += 1
+            yout, d, u, loss, phi_bar = _rum_sim(yref, W, dphi)
+            self.loss_marker.append(np.round(loss, 4))
+            fcs.print_info(
+            Marker=[str(self.nr_marker)],
+            Loss=[self.loss_marker[-6:]])
+
+            path_marker_file = os.path.join(path, str(self.nr_marker))
+            with open(path_marker_file, 'wb') as file:
+                pickle.dump(yref, file)
+                pickle.dump(yout, file)
+                pickle.dump(d, file)
+                pickle.dump(u, file)
+                pickle.dump(loss, file)
+    
+        self.model.NN.eval()
+        w, b = self.extract_last_layer(self.model.NN)
+        W = torch.cat((w, b.view(-1, 1)), dim=1)  # the linear matrix of the last layer
+
+        dphi = torch.zeros(65, 1).to(self.device).float()
+        self.kalman_filter.import_matrix(d=dphi.view(-1, 1))
+        yref_marker, path_marker = self.marker_initialization()
+
+        for i in range(nr_iterations):
+            tt = time.time()
+            
+            if (is_shift_dis is True) and (i > self.nr_shift_dis):
+                is_shift_dis = False
+                yref_marker = self.shift_distribution()
+
+            if i%self.nr_marker_interval == 0:
+                run_marker_step(yref_marker, W, dphi, path_marker)
+            
+            yref, _ = self.traj.get_traj()
+            t1 = time.time()
+            yout, d, u, loss, phi_bar = _rum_sim(yref, W, dphi)
+            tsim = time.time() - t1
+
+            t1 = time.time()
+            self.kalman_filter.get_A(W)
+            z = self.B@u.reshape(-1, 1) + self.Bd@torch.matmul(W, phi_bar).detach().cpu().numpy()/1000.0
+            dphi, tk, td, tp = self.kalman_filter.estimate(yout, z)      
+            t2 = time.time()
+
+            L = -self.Bd@W.detach().cpu().numpy()/1000.0
+            gradient = L.T@(yout.reshape(-1, 1) - yref[0, 1:551].reshape(-1, 1))
+            
+            ttotal = time.time() - tt
+
+            self.total_loss += loss
+            fcs.print_info(
+                Epoch=[str(i+1)+'/'+str(nr_iterations)],
+                Loss=[loss],
+                AvgLoss=[self.total_loss/(i+1)],
+                Ttotal = [ttotal],
+                Tsim = [tsim],
+                Tk=[tk],
+                Td=[td],
+                Tp=[tp]
+            )
+
+            if (i+1) % self.nr_data_interval == 0:
+                self.save_data(i, 
+                               hidden_states=dphi,
+                               u=u,
+                               yref=yref,
+                               d=d,
+                               yout=yout,
+                               loss=loss,
+                               gradient=gradient.flatten())
+                
+            if (i+1) % self.nr_interval == 0:
+                self.save_checkpoint(i+1)
 
 
     def _online_learning(self, nr_iterations: int=100, 

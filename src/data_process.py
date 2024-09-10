@@ -20,8 +20,20 @@ class DataWin():
     parameters:
     -----------
     """
-    def __init__(self) -> None:
-        pass
+    def __init__(self, device: str, PARAMS: dict) -> None:
+        self.device = device 
+        self.channel = PARAMS['channel']
+        self.height = PARAMS['height']
+        self.width = PARAMS['width']
+        self.h1 = PARAMS['h1']
+        self.h2 = PARAMS['h2']
+
+        self.l = self.h1 + self.h2 + 1
+        self.is_normalization = PARAMS['is_normalization']
+        self.is_centerization = PARAMS['is_centerization']
+        self.input_scale = PARAMS['input_scale']
+        self.output_scale = PARAMS['output_scale']
+        
 
 class DataSeq():
     """Generate sequential inputs and outputs
